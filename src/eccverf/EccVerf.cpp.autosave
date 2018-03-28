@@ -593,8 +593,8 @@ EC_KEY * ecies_key_create_public_octets(unsigned char *octets, size_t length) {
 }
 
 uint64_t secure_orig_length(secure_t *cryptex) {
-    secure_head_t *head = (secure_head_t *)cryptex;
-    return head->length.orig;
+        secure_head_t *head = (secure_head_t *)cryptex;
+        return head->length.orig;
 }
 
 secure_t * secure_alloc(uint64_t key, uint64_t mac, uint64_t orig, uint64_t body) {

@@ -2,24 +2,26 @@ cmake_minimum_required(VERSION 2.8)
 
 project(IoT_BlockChain)
 
-#find_package(Threads REQUIRED)
-
-
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
-find_package ( CryptoPP REQUIRED )
+#find_package(Threads REQUIRED)
 
-if(CRYPTOPP_FOUND)
-    message(STATUS "Found crypto++ (include: ${CRYPTOPP_INCLUDE_DIRS}, library: ${CRYPTOPP_LIBRARIES})")
+######### finding OpenSSL Libraries #####
+
+find_package ( OpenSSL REQUIRED )
+if(OPENSSL_FOUND)
+    message(STATUS "Found OpenSSL (include: ${OPENSSL_INCLUDE_DIR}, library: ${OPENSSL_LIBRARIES})")
 else()
-    message(STATUS "package 'crypto++' not found")
+    message(STATUS "  package 'OpenSSL' not found")
 endif()
+
+##############
+
 
 add_subdirectory (src)
 
 add_executable(${PROJECT_NAME} src/main.cpp)
-target_link_libraries(${PROJECT_NAME} PUBLIC eccverf ${CRYPTOPP_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PUBLIC eccverf ${OPENSSL_LIBRARIES})
 
 #subdirs(src)
 #set(SRC_LIST src/main.cpp)
