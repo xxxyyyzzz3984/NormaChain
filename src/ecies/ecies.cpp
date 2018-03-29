@@ -1,4 +1,4 @@
-#include "eccverf/EccVerf.h"
+#include "ecies/ecies.h"
 
 using namespace std;
 
@@ -113,14 +113,14 @@ char * ecies_key_private_get_hex(EC_KEY *key) {
     return hex;
 }
 
-secure_t* ecies_encrypt(char *key, unsigned char *data, size_t length) {
+char* ecies_encrypt(char *key, unsigned char *data, size_t length) {
 
-    void *body;
-    HMAC_CTX hmac;
+    unsigned char *body;
+//    HMAC_CTX hmac;
     int body_length;
-    secure_t *cryptex;
+    char *cryptex;
     EVP_CIPHER_CTX cipher;
-    unsigned int mac_length;
+//    unsigned int mac_length;
     EC_KEY *user, *ephemeral;
     size_t envelope_length, block_length, key_length;
     unsigned char envelope_key[SHA512_DIGEST_LENGTH],
@@ -160,7 +160,7 @@ secure_t* ecies_encrypt(char *key, unsigned char *data, size_t length) {
     // SHA 512 to ensure we have a sufficient amount of envelope key
     // material and that the material created is sufficiently secure.
     else if (ECDH_compute_key(envelope_key, SHA512_DIGEST_LENGTH,
-              EC_KEY_get0_public_key(user), ephemeral, ecies_key_derivation) !=SHA512_DIGEST_LENGTH) {
+              EC_KEY_get0_public_key(user), ephemeral, ecies_key_derivation) != SHA512_DIGEST_LENGTH) {
         printf("An error occurred while trying to compute the envelope key. {error = %s}\n",
                ERR_error_string(ERR_get_error(), NULL));
         EC_KEY_free(ephemeral);
@@ -180,11 +180,11 @@ secure_t* ecies_encrypt(char *key, unsigned char *data, size_t length) {
         return NULL;
     }
 
-        // We use a conditional to pad the length if the input buffer is not evenly divisible by the block size.
-        else if (!(cryptex = secure_alloc(envelope_length, EVP_MD_size(ECIES_HASHER),
-                                          length, length + (length % block_length ?
-                                                            (block_length - (length % block_length)) : 0)))) {
-        printf("Unable to allocate a secure_t buffer to hold the encrypted result.\n");
+    // We use a conditional to pad the length if the input buffer is not evenly divisible by the block size.
+    else if (!(cryptex = secure_alloc(envelope_length, EVP_MD_size(ECIES_HASHER),
+                        length, length + (length % block_length ?
+                                   (block_length - (length % block_length)) : 0)))) {
+        printf("Unable to allocate a char buffer to hold the encrypted result.\n");
         EC_KEY_free(ephemeral);
         EC_KEY_free(user);
         return NULL;
@@ -194,7 +194,7 @@ secure_t* ecies_encrypt(char *key, unsigned char *data, size_t length) {
     else if (EC_POINT_point2oct(EC_KEY_get0_group(ephemeral),
                                 EC_KEY_get0_public_key(ephemeral),
                                 POINT_CONVERSION_COMPRESSED,
-                                (unsigned char*) secure_key_data(cryptex), envelope_length, NULL) != envelope_length) {
+                                secure_key_data(cryptex), envelope_length, NULL) != envelope_length) {
         printf("An error occurred while trying to record the public portion of the envelope key. {error = %s}\n",
                ERR_error_string(ERR_get_error(),
                                 NULL));
@@ -219,7 +219,7 @@ secure_t* ecies_encrypt(char *key, unsigned char *data, size_t length) {
     // Initialize the cipher with the envelope key.
     if (EVP_EncryptInit_ex(&cipher, ECIES_CIPHER, NULL, envelope_key, iv)
             != 1 || EVP_CIPHER_CTX_set_padding(&cipher, 0) != 1 ||
-            EVP_EncryptUpdate(&cipher, (unsigned char *)body, &body_length, data, length - (length % block_length)) != 1) {
+            EVP_EncryptUpdate(&cipher, body, &body_length, data, length - (length % block_length)) != 1) {
         printf("An error occurred while trying to secure the data using the chosen symmetric cipher. {error = %s}\n",
                ERR_error_string(ERR_get_error(), NULL));
         EVP_CIPHER_CTX_cleanup(&cipher);
@@ -253,7 +253,7 @@ secure_t* ecies_encrypt(char *key, unsigned char *data, size_t length) {
         }
 
         // Pass the final partially filled data block into the cipher as a complete block. The padding will be removed during the decryption process.
-        else if (EVP_EncryptUpdate(&cipher, (unsigned char*) body, &body_length, block, block_length) != 1) {
+        else if (EVP_EncryptUpdate(&cipher, body, &body_length, block, block_length) != 1) {
             printf("Unable to secure the data using the chosen symmetric cipher. {error = %s}\n",
                    ERR_error_string(ERR_get_error(), NULL));
             EVP_CIPHER_CTX_cleanup(&cipher);
@@ -266,15 +266,15 @@ secure_t* ecies_encrypt(char *key, unsigned char *data, size_t length) {
     // Advance the pointer, then use pointer arithmetic to calculate how much of the body buffer has been used.
     // The complex logic is needed so that we get
     // the correct status regardless of whether there was a partial data block.
-//    body += body_length;
-//    if ((body_length = secure_body_length(cryptex) - (body - secure_body_data(cryptex))) < 0) {
-//        printf("The symmetric cipher overflowed!\n");
-//        EVP_CIPHER_CTX_cleanup(&cipher);
-//        secure_free(cryptex);
-//        return NULL;
-//    }
+    body += body_length;
+    if ((body_length = secure_body_length(cryptex) - (body - secure_body_data(cryptex))) < 0) {
+        printf("The symmetric cipher overflowed!\n");
+        EVP_CIPHER_CTX_cleanup(&cipher);
+        secure_free(cryptex);
+        return NULL;
+    }
 
-    if (EVP_EncryptFinal_ex(&cipher, (unsigned char*) body, &body_length) != 1) {
+    if (EVP_EncryptFinal_ex(&cipher, body, &body_length) != 1) {
         printf("Unable to secure the data using the chosen symmetric cipher. {error = %s}\n",
                ERR_error_string(ERR_get_error(), NULL));
         EVP_CIPHER_CTX_cleanup(&cipher);
@@ -284,28 +284,10 @@ secure_t* ecies_encrypt(char *key, unsigned char *data, size_t length) {
 
     EVP_CIPHER_CTX_cleanup(&cipher);
 
-    // Generate an authenticated hash which can be used to validate the data during decryption.
-    HMAC_CTX_init(&hmac);
-    mac_length = secure_mac_length(cryptex);
-
-    // At the moment we are generating the hash using encrypted data. At some point we may want to validate the original text instead.
-    if (HMAC_Init_ex(&hmac, envelope_key + key_length, key_length, ECIES_HASHER, NULL) != 1
-            || HMAC_Update(&hmac, (const unsigned char*) secure_body_data(cryptex),
-                           secure_body_length(cryptex))!= 1
-            || HMAC_Final(&hmac, (unsigned char*) secure_mac_data(cryptex), &mac_length) != 1) {
-        printf("Unable to generate a data authentication code. {error = %s}\n",
-               ERR_error_string(ERR_get_error(), NULL));
-        HMAC_CTX_cleanup(&hmac);
-        secure_free(cryptex);
-        return NULL;
-    }
-
-    HMAC_CTX_cleanup(&hmac);
-
     return cryptex;
 }
 
-unsigned char * ecies_decrypt(char *key, secure_t *cryptex, size_t *length) {
+unsigned char * ecies_decrypt(char *key, char *cryptex, size_t *length) {
 
     HMAC_CTX hmac;
     size_t key_length;
@@ -356,30 +338,11 @@ unsigned char * ecies_decrypt(char *key, secure_t *cryptex, size_t *length) {
     EC_KEY_free(ephemeral);
     EC_KEY_free(user);
 
-    // Use the authenticated hash of the ciphered data to ensure it was notmodified after being encrypted.
-    HMAC_CTX_init(&hmac);
-
-        // At the moment we are generating the hash using encrypted data. At some point we may want to validate the original text instead.
-    if (HMAC_Init_ex(&hmac, envelope_key + key_length, key_length, ECIES_HASHER, NULL) != 1 ||
-            HMAC_Update(&hmac, (unsigned char*) secure_body_data(cryptex), secure_body_length(cryptex))
-                        != 1 || HMAC_Final(&hmac, md, &mac_length) != 1) {
-        printf("Unable to generate the authentication code needed for validation. {error = %s}\n",
-               ERR_error_string(ERR_get_error(), NULL));
-        HMAC_CTX_cleanup(&hmac);
-        return NULL;
-    }
-
-    HMAC_CTX_cleanup(&hmac);
-
-    // We can use the generated hash to ensure the encrypted data was not altered after being encrypted.
-    if (mac_length != secure_mac_length(cryptex) || memcmp(md, secure_mac_data(cryptex), mac_length)) {
-        printf("The authentication code was invalid! The ciphered data has been corrupted!\n");
-        return NULL;
-    }
 
     // Create a buffer to hold the result.
     output_length = secure_body_length(cryptex);
-    if (!(block = output = (unsigned char*) malloc(output_length + 1))) {
+
+    if (!(block = output = reinterpret_cast<unsigned char *>( malloc(output_length + 1) ))) {
         printf("An error occurred while trying to allocate memory for the decrypted data.\n");
         return NULL;
     }
@@ -390,11 +353,12 @@ unsigned char * ecies_decrypt(char *key, secure_t *cryptex, size_t *length) {
 
     EVP_CIPHER_CTX_init(&cipher);
 
+
     // Decrypt the data using the chosen symmetric cipher.
     if (EVP_DecryptInit_ex(&cipher, ECIES_CIPHER, NULL, envelope_key, iv) != 1
             || EVP_CIPHER_CTX_set_padding(&cipher, 0) != 1
             || EVP_DecryptUpdate(&cipher, block,
-                                 &output_length, (unsigned char*) secure_body_data(cryptex), secure_body_length(cryptex)) != 1) {
+                                 &output_length, secure_body_data(cryptex), secure_body_length(cryptex)) != 1) {
         printf("Unable to decrypt the data using the chosen symmetric cipher. {error = %s}\n", ERR_error_string(ERR_get_error(), NULL));
         EVP_CIPHER_CTX_cleanup(&cipher);
         free(output);
@@ -532,7 +496,7 @@ void * ecies_key_derivation(const void *input, size_t ilen, void *output, size_t
             return NULL;
     }
     *olen = SHA512_DIGEST_LENGTH;
-    return SHA512((unsigned char*) input, ilen, (unsigned char*) output);
+    return SHA512(reinterpret_cast<const unsigned char *>(input), ilen, reinterpret_cast<unsigned char *>(output));
 }
 
 EC_KEY * ecies_key_create_public_octets(unsigned char *octets, size_t length) {
@@ -592,13 +556,13 @@ EC_KEY * ecies_key_create_public_octets(unsigned char *octets, size_t length) {
     return key;
 }
 
-uint64_t secure_orig_length(secure_t *cryptex) {
+uint64_t secure_orig_length(char *cryptex) {
         secure_head_t *head = (secure_head_t *)cryptex;
         return head->length.orig;
 }
 
-secure_t * secure_alloc(uint64_t key, uint64_t mac, uint64_t orig, uint64_t body) {
-    secure_t *cryptex = (secure_t *) malloc(sizeof(secure_head_t) + key + mac + body);
+char * secure_alloc(uint64_t key, uint64_t mac, uint64_t orig, uint64_t body) {
+    char *cryptex = (char*) malloc(sizeof(secure_head_t) + key + mac + body);
     secure_head_t *head = (secure_head_t *)cryptex;
     head->length.key = key;
     head->length.mac = mac;
@@ -607,43 +571,46 @@ secure_t * secure_alloc(uint64_t key, uint64_t mac, uint64_t orig, uint64_t body
     return cryptex;
 }
 
-secure_t * secure_key_data(secure_t *cryptex) {
-    return cryptex + sizeof(secure_head_t);
+unsigned char * secure_key_data(char *cryptex) {
+    unsigned char* result = reinterpret_cast<unsigned char *>( cryptex + sizeof(secure_head_t) );
+    return result;
 }
 
-void secure_free(secure_t *cryptex) {
+void secure_free(char *cryptex) {
     free(cryptex);
     return;
 }
 
 
-uint64_t secure_body_length(secure_t *cryptex) {
+uint64_t secure_body_length(char *cryptex) {
     secure_head_t *head = (secure_head_t *)cryptex;
     return head->length.body;
 }
 
-secure_t * secure_body_data(secure_t *cryptex) {
-    secure_head_t *head = (secure_head_t *)cryptex;
-    return cryptex + (sizeof(secure_head_t) + head->length.key + head->length.mac);
+unsigned char * secure_body_data(char *cryptex) {
+    secure_head_t *head = (secure_head_t *) cryptex;
+    unsigned char* result = reinterpret_cast<unsigned char *>( cryptex + (sizeof(secure_head_t) + head->length.key + head->length.mac) );
+    return result;
 }
 
-secure_t * secure_mac_data(secure_t *cryptex) {
+unsigned char * secure_mac_data(char *cryptex) {
     secure_head_t *head = (secure_head_t *)cryptex;
-    return cryptex + (sizeof(secure_head_t) + head->length.key);
+    unsigned char* result = reinterpret_cast<unsigned char *>(sizeof(secure_head_t) + head->length.key);
+    return result;
 }
 
 
-uint64_t secure_mac_length(secure_t *cryptex) {
+uint64_t secure_mac_length(char *cryptex) {
     secure_head_t *head = (secure_head_t *)cryptex;
     return head->length.mac;
 }
 
-uint64_t secure_key_length(secure_t *cryptex) {
+uint64_t secure_key_length(char *cryptex) {
     secure_head_t *head = (secure_head_t *)cryptex;
     return head->length.key;
 }
 
-void test() {
+void example() {
     EC_KEY *key;
     key = ecies_key_create();
     if (key == NULL) {
@@ -651,37 +618,37 @@ void test() {
     }
     else {
         char* hex_pub = ecies_key_public_get_hex(key);
+        char* hex_priv = ecies_key_private_get_hex(key);
 
         int tlen;
-        char const *text = "This is a test";
+        size_t olen;
+        char* ciphered = NULL;
+        unsigned char * original = NULL;
 
-        cout << text << endl;
+        unsigned char text[] = "This is a test";
 
-//        do {
-//            tlen = (rand() % (1024 * 1024));
-//        } while (tlen < 1024);
-//        if (!(text = (unsigned char *) malloc(tlen + 1)) || !(copy = (unsigned char *) malloc(tlen + 1))) {
-//            printf("Memory error.\n");
+        clock_t encrypt_start = clock();
+        if (!(ciphered = ecies_encrypt(hex_pub, text, sizeof(text)*sizeof(char)))) {
+            cout << "The encryption process failed!" << endl;
+        }
+        clock_t encrypt_end = clock();
+        double encrypt_duration = ( encrypt_end - encrypt_start ) / (double) CLOCKS_PER_SEC;
+        cout << encrypt_duration << endl;
 
-//        }
+        clock_t decrypt_start = clock();
+        if (!(original = ecies_decrypt(hex_priv, ciphered, &olen))) {
+            cout << "The decryption process failed!" << endl;
+        }
+        clock_t decrypt_end = clock();
 
-//        // Wipe and then fill the data blocks with random data.
-//        memset(copy, 0, tlen + 1);
-//        memset(text, 0, tlen + 1);
-//        for (uint64_t j = 0; j < tlen; j++) {
-//                *(copy + j) = *(text + j) = (rand() % 255);
-//        }
+        double decrypt_duration = ( decrypt_end - decrypt_start ) / (double) CLOCKS_PER_SEC;
+        cout << decrypt_duration << endl;
 
-//        secure_t *ciphered = NULL;
-//        if (!(ciphered = ecies_encrypt(hex_pub, text, tlen))) {
-//            printf("The encryption process failed!\n");
-//            cout << "error" << endl;
-//        }
+        cout << "The public key is " << endl << hex_pub << endl;
+        cout << "The private key is " << endl << hex_priv << endl;
+        cout << "The ciphertext is:" << endl << secure_body_data(ciphered) << endl;
 
-        secure_t *ciphered = NULL;
-        ciphered = ecies_encrypt(hex_pub, (unsigned char*) text, sizeof(text)*sizeof(char));
-        cout << (char*) ciphered << endl;
-
+        cout << "The decrypted text is:" << endl << original << endl;
     }
 }
 

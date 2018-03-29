@@ -1,1 +1,1 @@
-add_subdirectory (eccverf)
+add_subdirectory (ecies)

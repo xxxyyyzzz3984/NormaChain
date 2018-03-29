@@ -1,9 +1,9 @@
-#include "eccverf/EccVerf.h"
+#include "ecies/ecies.h"
 
 using namespace std;
 
 int main()
 {
-    test();
+    example();
 	return 1;
 }
