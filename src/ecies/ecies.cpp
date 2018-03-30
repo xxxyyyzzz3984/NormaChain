@@ -610,7 +610,7 @@ uint64_t secure_key_length(char *cryptex) {
     return head->length.key;
 }
 
-void example() {
+void ecies_example() {
     EC_KEY *key;
     key = ecies_key_create();
     if (key == NULL) {

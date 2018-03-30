@@ -49,6 +49,6 @@ uint64_t secure_mac_length(char *cryptex);
 uint64_t secure_key_length(char *cryptex);
 uint64_t secure_orig_length(char *cryptex);
 
-void example();
+void ecies_example();
 
 #endif
