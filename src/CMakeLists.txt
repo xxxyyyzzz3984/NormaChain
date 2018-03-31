@@ -1,4 +1,5 @@
 add_subdirectory (ecies)
-add_subdirectory (eccverify)
+add_subdirectory (verifier)
 add_subdirectory (configparser)
+add_subdirectory (proofer)
 include_directories(httpimpl)

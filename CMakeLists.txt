@@ -4,6 +4,8 @@ project(IoT_BlockChain)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "../../")
+
 ######### finding OpenSSL Libraries #####
 find_package ( OpenSSL REQUIRED )
 
@@ -15,7 +17,7 @@ endif()
 ##############
 
 ############# finding Boost Libraries ######
-find_package(Boost REQUIRED COMPONENTS system thread)
+find_package(Boost 1.55 REQUIRED COMPONENTS system thread)
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
@@ -30,7 +32,3 @@ find_package(Threads REQUIRED)
 ##############
 
 add_subdirectory (src)
-
-add_executable(${PROJECT_NAME} src/main.cpp)
-target_link_libraries(${PROJECT_NAME} PUBLIC ecies eccverify configparser
-    ${OPENSSL_LIBRARIES} ${BOOST_LIBS} ${CMAKE_THREAD_LIBS_INIT})

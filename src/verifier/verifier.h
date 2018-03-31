@@ -15,17 +15,18 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-class ECCVerifier
+class Verifier
 {
 
 public:
-    ECCVerifier();
+    Verifier();
     void Serve();
 private:
     ConfigParser mConfigParser;
     int mOpenPort;
     static std::string mPublicKey;
     static std::string mCorrectAns;
+    static bool mSelfDecision;
 };
 
 #endif

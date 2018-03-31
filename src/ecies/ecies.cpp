@@ -289,12 +289,10 @@ char* ecies_encrypt(char *key, unsigned char *data, size_t length) {
 
 unsigned char * ecies_decrypt(char *key, char *cryptex, size_t *length) {
 
-    HMAC_CTX hmac;
     size_t key_length;
     int output_length;
     EVP_CIPHER_CTX cipher;
     EC_KEY *user, *ephemeral;
-    unsigned int mac_length = EVP_MAX_MD_SIZE;
     unsigned char envelope_key[SHA512_DIGEST_LENGTH], iv[EVP_MAX_IV_LENGTH], md[EVP_MAX_MD_SIZE], *block, *output;
 
     // Simple sanity check.
@@ -384,6 +382,103 @@ unsigned char * ecies_decrypt(char *key, char *cryptex, size_t *length) {
     EVP_CIPHER_CTX_cleanup(&cipher);
 
     *length = secure_orig_length(cryptex);
+    return output;
+}
+
+unsigned char * ecies_decrypt_by_parts(char *key, unsigned char *crypt_key_data, int crypt_key_len, unsigned char *crypt_body_data, int crypt_body_len){
+
+    size_t key_length;
+    int output_length;
+    EVP_CIPHER_CTX cipher;
+    EC_KEY *user, *ephemeral;
+    unsigned char envelope_key[SHA512_DIGEST_LENGTH], iv[EVP_MAX_IV_LENGTH], md[EVP_MAX_MD_SIZE], *block, *output;
+
+    // Simple sanity check.
+    if (!key || !crypt_key_data || !crypt_body_data) {
+            printf("Invalid parameters passed in.\n");
+            return NULL;
+    }
+
+    // Make sure we are generating enough key material for the symmetric ciphers.
+    else if ((key_length = EVP_CIPHER_key_length(ECIES_CIPHER)) * 2 > SHA512_DIGEST_LENGTH) {
+                printf("The key derivation method will not produce enough envelope key material for the chosen ciphers. "
+                       "{envelope = %i / required = %zu}", SHA512_DIGEST_LENGTH / 8, (key_length * 2) / 8);
+                return NULL;
+    }
+
+    // Convert the user's public key from hex into a full EC_KEY structure.
+    else if (!(user = ecies_key_create_private_hex(key))) {
+        printf("Invalid private key provided.\n");
+        return NULL;
+    }
+
+    // Create the ephemeral key used specifically for this block of data.
+    else if (!(ephemeral = ecies_key_create_public_octets((unsigned char*) crypt_key_data, crypt_key_len))) {
+        printf("An error occurred while trying to recreate the ephemeral key.\n");
+        EC_KEY_free(user);
+        return NULL;
+    }
+
+    // Use the intersection of the provided keys to generate the envelope data used by the ciphers below. The ecies_key_derivation() function uses
+    // SHA 512 to ensure we have a sufficient amount of envelope key material and that the material created is sufficiently secure.
+    else if (ECDH_compute_key(envelope_key, SHA512_DIGEST_LENGTH,
+                              EC_KEY_get0_public_key(ephemeral), user, ecies_key_derivation) != SHA512_DIGEST_LENGTH) {
+        printf("An error occurred while trying to compute the envelope key. {error = %s}\n",
+               ERR_error_string(ERR_get_error(), NULL));
+            EC_KEY_free(ephemeral);
+            EC_KEY_free(user);
+            return NULL;
+        }
+
+    // The envelope key material has been extracted, so we no longer need the user and ephemeral keys.
+    EC_KEY_free(ephemeral);
+    EC_KEY_free(user);
+
+
+    // Create a buffer to hold the result.
+    output_length = crypt_body_len;
+
+    if (!(block = output = reinterpret_cast<unsigned char *>( malloc(output_length + 1) ))) {
+        printf("An error occurred while trying to allocate memory for the decrypted data.\n");
+        return NULL;
+    }
+
+    // For now we use an empty initialization vector. We also clear out the result buffer just to be on the safe side.
+    memset(iv, 0, EVP_MAX_IV_LENGTH);
+    memset(output, 0, output_length + 1);
+
+    EVP_CIPHER_CTX_init(&cipher);
+
+
+    // Decrypt the data using the chosen symmetric cipher.
+    if (EVP_DecryptInit_ex(&cipher, ECIES_CIPHER, NULL, envelope_key, iv) != 1
+            || EVP_CIPHER_CTX_set_padding(&cipher, 0) != 1
+            || EVP_DecryptUpdate(&cipher, block,
+                                 &output_length, (const unsigned char*) crypt_body_data, crypt_body_len) != 1) {
+        printf("Unable to decrypt the data using the chosen symmetric cipher. {error = %s}\n", ERR_error_string(ERR_get_error(), NULL));
+        EVP_CIPHER_CTX_cleanup(&cipher);
+        free(output);
+        return NULL;
+    }
+
+    block += output_length;
+    if ((output_length = crypt_body_len - output_length) != 0) {
+        printf("The symmetric cipher failed to properly decrypt the correct amount of data!\n");
+        EVP_CIPHER_CTX_cleanup(&cipher);
+        free(output);
+        return NULL;
+    }
+
+    if (EVP_DecryptFinal_ex(&cipher, block, &output_length) != 1) {
+        printf("Unable to decrypt the data using the chosen symmetric cipher. {error = %s}\n",
+               ERR_error_string(ERR_get_error(), NULL));
+        EVP_CIPHER_CTX_cleanup(&cipher);
+        free(output);
+        return NULL;
+    }
+
+    EVP_CIPHER_CTX_cleanup(&cipher);
+
     return output;
 }
 
@@ -556,11 +651,6 @@ EC_KEY * ecies_key_create_public_octets(unsigned char *octets, size_t length) {
     return key;
 }
 
-uint64_t secure_orig_length(char *cryptex) {
-        secure_head_t *head = (secure_head_t *)cryptex;
-        return head->length.orig;
-}
-
 char * secure_alloc(uint64_t key, uint64_t mac, uint64_t orig, uint64_t body) {
     char *cryptex = (char*) malloc(sizeof(secure_head_t) + key + mac + body);
     secure_head_t *head = (secure_head_t *)cryptex;
@@ -595,7 +685,7 @@ unsigned char * secure_body_data(char *cryptex) {
 
 unsigned char * secure_mac_data(char *cryptex) {
     secure_head_t *head = (secure_head_t *)cryptex;
-    unsigned char* result = reinterpret_cast<unsigned char *>(sizeof(secure_head_t) + head->length.key);
+    unsigned char* result = reinterpret_cast<unsigned char *>(cryptex + sizeof(secure_head_t) + head->length.key);
     return result;
 }
 
@@ -608,6 +698,18 @@ uint64_t secure_mac_length(char *cryptex) {
 uint64_t secure_key_length(char *cryptex) {
     secure_head_t *head = (secure_head_t *)cryptex;
     return head->length.key;
+}
+
+uint64_t secure_orig_length(char *cryptex) {
+        secure_head_t *head = (secure_head_t *)cryptex;
+        return head->length.orig;
+}
+
+unsigned char * secure_orig_data(char *cryptex) {
+    secure_head_t *head = (secure_head_t *)cryptex;
+    unsigned char* result = reinterpret_cast<unsigned char *>( cryptex +
+                        (sizeof(secure_head_t) + head->length.key + head->length.mac + head->length.body) );
+    return result;
 }
 
 void ecies_example() {
@@ -644,10 +746,14 @@ void ecies_example() {
         double decrypt_duration = ( decrypt_end - decrypt_start ) / (double) CLOCKS_PER_SEC;
         cout << decrypt_duration << endl;
 
+        if (!(original = ecies_decrypt_by_parts(hex_priv, secure_key_data(ciphered), secure_key_length(ciphered),
+                                                secure_body_data(ciphered), secure_body_length(ciphered)))) {
+            cout << "The decryption process failed!" << endl;
+        }
+
         cout << "The public key is " << endl << hex_pub << endl;
         cout << "The private key is " << endl << hex_priv << endl;
-        cout << "The ciphertext is:" << endl << secure_body_data(ciphered) << endl;
-
+        cout << "The cipher text is " << endl << secure_body_data(ciphered) << endl;
         cout << "The decrypted text is:" << endl << original << endl;
     }
 }

@@ -34,6 +34,7 @@ char * ecies_key_private_get_hex(EC_KEY *key);
 char * ecies_encrypt(char *key, unsigned char *data, size_t length);
 unsigned char * ecies_decrypt(char *key, char *cryptex, size_t *length);
 unsigned char * ecies_decrypt(char *key, char *cryptex, size_t *length);
+unsigned char * ecies_decrypt_by_parts(char *key, unsigned char *crypt_key_data, int crypt_key_len, unsigned char *crypt_body_data, int crypt_body_len);
 EC_KEY * ecies_key_create_public_hex(char *hex);
 EC_KEY * ecies_key_create_private_hex(char *hex);
 void * ecies_key_derivation(const void *input, size_t ilen, void *output, size_t *olen);
@@ -48,6 +49,7 @@ unsigned char * secure_mac_data(char *cryptex);
 uint64_t secure_mac_length(char *cryptex);
 uint64_t secure_key_length(char *cryptex);
 uint64_t secure_orig_length(char *cryptex);
+unsigned char * secure_orig_data(char *cryptex);
 
 void ecies_example();
 

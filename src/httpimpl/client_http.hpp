@@ -369,6 +369,10 @@ namespace SimpleWeb {
       stop();
     }
 
+    std::string get_host() {
+        return host;
+    }
+
   protected:
     bool internal_io_service = false;
 
