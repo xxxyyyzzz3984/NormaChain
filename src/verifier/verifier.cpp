@@ -130,25 +130,24 @@ void Verifier::Serve() {
 //                    free(buffer);
 //                    free(val);
 
-                    response_str = "{\"cryptkey\":\"";
-                    response_str += secure_key_str;
-                    response_str += "\",";
+//                    response_str = "{\"cryptkey\":\"";
+//                    response_str += secure_key_str;
+//                    response_str += "\",";
 
-                    response_str += "\"cryptkey_len\":\"";
-                    response_str += key_len;
-                    response_str += "\",";
+//                    response_str += "\"cryptkey_len\":\"";
+//                    response_str += key_len;
+//                    response_str += "\",";
 
-                    response_str += "\"cryptbody\":\"";
-                    response_str += secure_body_str;
-                    response_str += "\",";
+//                    response_str += "\"cryptbody\":\"";
+//                    response_str += secure_body_str;
+//                    response_str += "\",";
 
-                    response_str += "\"cryptbody_len\":\"";
-                    response_str += body_len;
-                    response_str += "\"}";
+//                    response_str += "\"cryptbody_len\":\"";
+//                    response_str += body_len;
+//                    response_str += "\"}";
 
                     *response << "HTTP/1.1 200 OK\r\n"
-                              << "Content-Length: " << response_str.length() << "\r\n\r\n"
-                              << response_str;
+                              << "Content-Length: "  << "\r\n\r\n";
 
                 }
 

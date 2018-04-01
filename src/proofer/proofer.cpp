@@ -142,27 +142,29 @@ void Proofer::do_verify(string IP_Addr, string port) {
         client.request("POST", "/verifyme", "", [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
             if(!ec) {
                 CryptexParts cryptparts = CryptexParts();
+                cout << endl;
+                cout << response->content.rdbuf()<<endl;
 
-                ptree pt;
-                read_json(response->content, pt);
+//                ptree pt;
+//                read_json(response->content, pt);
 
-                cryptparts.cryptkey = pt.get<string>("cryptkey");
-                stringstream geek_keylen(pt.get<string>("cryptkey_len"));
-                geek_keylen >> cryptparts.cryptkey_len;
-                cryptparts.crpytbody = pt.get<string>("cryptbody");
-                stringstream geek_bodylen(pt.get<string>("cryptbody_len"));
-                geek_bodylen >> cryptparts.cryptbody_len;
+//                cryptparts.cryptkey = pt.get<string>("cryptkey");
+//                stringstream geek_keylen(pt.get<string>("cryptkey_len"));
+//                geek_keylen >> cryptparts.cryptkey_len;
+//                cryptparts.crpytbody = pt.get<string>("cryptbody");
+//                stringstream geek_bodylen(pt.get<string>("cryptbody_len"));
+//                geek_bodylen >> cryptparts.cryptbody_len;
 
-                unsigned char * original = NULL;
-                char hex_priv[] = "013A1DABB6EA5863EB27722325905447CF0702B45B0418D4AEE055DF0D96AA7930D6D24362CEA7E789FF585D4E38451876815239D556CBC6D6EA158C762A6BB3FD35";
-                if (!(original = ecies_decrypt_by_parts((char*) hex_priv, (unsigned char*)cryptparts.cryptkey.c_str(),
-                                                        cryptparts.cryptkey_len,
-                                                        (unsigned char*) cryptparts.crpytbody.c_str(), cryptparts.cryptbody_len))) {
-                    cout << "The decryption process failed!" << endl;
-                }
-                else {
-                    cout << "The original data is " << original << endl;
-                }
+//                unsigned char * original = NULL;
+//                char hex_priv[] = "013A1DABB6EA5863EB27722325905447CF0702B45B0418D4AEE055DF0D96AA7930D6D24362CEA7E789FF585D4E38451876815239D556CBC6D6EA158C762A6BB3FD35";
+//                if (!(original = ecies_decrypt_by_parts((char*) hex_priv, (unsigned char*)cryptparts.cryptkey.c_str(),
+//                                                        cryptparts.cryptkey_len,
+//                                                        (unsigned char*) cryptparts.crpytbody.c_str(), cryptparts.cryptbody_len))) {
+//                    cout << "The decryption process failed!" << endl;
+//                }
+//                else {
+//                    cout << "The original data is " << original << endl;
+//                }
             }
           });
 

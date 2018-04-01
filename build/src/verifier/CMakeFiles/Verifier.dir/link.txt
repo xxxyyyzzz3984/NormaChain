@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11   CMakeFiles/Verifier.dir/main.cpp.o CMakeFiles/Verifier.dir/verifier.cpp.o  -o ../../Verifier -rdynamic ../ecies/libecies.a ../configparser/libconfigparser.a -lboost_system -lboost_thread -lpthread -lssl -lcrypto 

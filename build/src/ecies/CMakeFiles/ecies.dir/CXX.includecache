@@ -1,0 +1,32 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../src/ecies/ecies.h
+iostream
+-
+string
+-
+stdlib.h
+-
+inttypes.h
+-
+openssl/ssl.h
+-
+openssl/crypto.h
+-
+openssl/err.h
+-
+openssl/stack.h
+-
+ctime
+-
+
+/home/xyh3984/CC++Projects/IoT_BlockChain/src/ecies/ecies.cpp
+ecies/ecies.h
+/home/xyh3984/CC++Projects/IoT_BlockChain/src/ecies/ecies/ecies.h
+
