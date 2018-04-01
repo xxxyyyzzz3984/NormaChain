@@ -1,2 +1,0 @@
-/usr/bin/ar qc libecies.a  CMakeFiles/ecies.dir/ecies.cpp.o
-/usr/bin/ranlib libecies.a

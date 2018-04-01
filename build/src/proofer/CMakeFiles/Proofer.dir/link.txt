@@ -1,1 +1,0 @@
-/usr/bin/c++    -std=c++11   CMakeFiles/Proofer.dir/main.cpp.o CMakeFiles/Proofer.dir/proofer.cpp.o  -o ../../Proofer -rdynamic ../ecies/libecies.a ../configparser/libconfigparser.a -lboost_system -lboost_thread -lpthread -lssl -lcrypto 
