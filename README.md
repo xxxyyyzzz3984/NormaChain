@@ -1,6 +1,6 @@
 # BlockChain Platform
 
-This project is a novel blockchain distributed concensus framework based on revised PBFT (with $O(nlog(n))$ computational overhead), and faster encryption/decryption mechanism (ECIES, i.e., ECC+AES+SHA256). 
+This project is a novel blockchain distributed concensus framework based on revised PBFT (with <a href="https://www.codecogs.com/eqnedit.php?latex=O(n\log&space;(n))" target="_blank"><img src="https://latex.codecogs.com/gif.latex?O(n\log&space;(n))" title="O(n\log (n))" /></a>) computational overhead), and faster encryption/decryption mechanism (ECIES, i.e., ECC+AES+SHA256). 
 
 ## Installation/Getting Started
 
