@@ -43,7 +43,7 @@ Verifier::Verifier() {
  *The proofer rules:
  *(1). A proofer has to send a request to a verifer upon the link http://localhost:port/verifyme
  *(2). Then the verifier will respond a random number encrypted with ECIES public key in the format of
- * {"cryptkey":"xxxx","cryptkey_len":xx,"cryptbody":xxx,"cryptbody_len":xx} (cryptex structure)
+ * cryptex4transmit object type
  *(3). Then the verifier uses the private key to decrypt the ciphtertext and passes the plaintext number back to verifier
  * upon the linke http://localhost:port/answer with the format of {"plaintext":"xxxx"}
 */
@@ -103,51 +103,17 @@ void Verifier::Serve() {
                 }
                 else {
 
-                    string secure_key_str((char*)secure_key_data(ciphered));
-                    string key_len = to_string(secure_key_length(ciphered));
-                    string secure_body_str((char*)secure_body_data(ciphered));
-                    string body_len = to_string(secure_body_length(ciphered));
 
-//                    char *buffer;
-//                    char *val;
-//                    buffer = (char*) malloc(200);
-//                    val = (char*) malloc(200);
+                    cryptex4transmit cryptex2transmit = cryptex4transmit();
+                    cryptex2transmit.convert_cryptex2transmit(ciphered);
 
-//                    for(int j = 0; j < 100; j++)
-//                        sprintf(buffer, "%02X", secure_body_data(ciphered)+j);
-
-//                    for(int j = 0; j < 100; j++){
-//                        sscanf(buffer, "%02X", val);
-//                        buffer += 2;
-//                        val += j;
-//                    }
-
-
-
-////                    cout << buffer << endl;
-//                    cout<<strlen(val)<<endl;
-//                    cout << body_len<<endl;
-//                    free(buffer);
-//                    free(val);
-
-//                    response_str = "{\"cryptkey\":\"";
-//                    response_str += secure_key_str;
-//                    response_str += "\",";
-
-//                    response_str += "\"cryptkey_len\":\"";
-//                    response_str += key_len;
-//                    response_str += "\",";
-
-//                    response_str += "\"cryptbody\":\"";
-//                    response_str += secure_body_str;
-//                    response_str += "\",";
-
-//                    response_str += "\"cryptbody_len\":\"";
-//                    response_str += body_len;
-//                    response_str += "\"}";
+                    stringstream archive_stream;
+                    boost::archive::text_oarchive archive(archive_stream);
+                    archive << cryptex2transmit;
 
                     *response << "HTTP/1.1 200 OK\r\n"
-                              << "Content-Length: "  << "\r\n\r\n";
+                              << "Content-Length: " << archive_stream.str().length()
+                              << "\r\n\r\n" << archive_stream.str().c_str();
 
                 }
 
@@ -168,6 +134,7 @@ void Verifier::Serve() {
 
                 if (answer != "" && answer == Verifier::mCorrectAns) {
                     Verifier::mSelfDecision = true;
+                    cout << "The answer is correct !" << endl;
 //                    string response_str = "Public Key Accepted Successfully !!";
 //                    *response << "HTTP/1.1 200 OK\r\n"
 //                              << "Content-Length: " << response_str.length() << "\r\n\r\n"
@@ -175,6 +142,7 @@ void Verifier::Serve() {
                 }
                 else {
                     Verifier::mSelfDecision = false;
+                    cout << "The answer is wrong !" << endl;
 //                    string response_str = "Answer Accepted Failed !!";
 //                    *response << "HTTP/1.1 200 OK\r\n"
 //                              << "Content-Length: " << response_str.length() << "\r\n\r\n"

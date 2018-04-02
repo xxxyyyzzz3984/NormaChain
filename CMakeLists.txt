@@ -17,14 +17,14 @@ endif()
 ##############
 
 ############# finding Boost Libraries ######
-find_package(Boost 1.55 REQUIRED COMPONENTS system thread)
+find_package(Boost 1.55 REQUIRED COMPONENTS system thread serialization)
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
   link_directories(${Boost_LIBRARY_DIRS})
+else()
+    message(STATUS "Package 'Boost' not found")
 endif(Boost_FOUND)
-
-SET(BOOST_LIBS ${Boost_SYSTEM_LIBRARY} ${Boost_THREAD_LIBRARY})
 ##############
 
 ############# finding THREAD Libraries ######

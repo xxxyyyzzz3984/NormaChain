@@ -3,7 +3,8 @@
 using namespace std;
 using namespace boost::property_tree;
 
-std::string Proofer::mPrivKey = "";
+string Proofer::mPrivKey = "";
+int Proofer::mMyAnswer = 0;
 
 CryptexParts::CryptexParts() {
     this->cryptbody_len = 0;
@@ -63,72 +64,70 @@ Proofer::Proofer() {
  *The proofer rules:
  *(1). The proofer has to send a request to a verifer upon the link http://verifierip:port/verifyme
  *(2). Then the verifier will respond a random number encrypted with ECIES public key in the format of
- * {"cryptkey":"xxxx","cryptkey_len":xx,"cryptbody":xxx,"cryptbody_len":xx} (cryptex structure)
+ * cryptex4transmit object type
  *(3). Then the proofer uses the private key to decrypt the ciphtertext and passes the plaintext number back to verifier
  * upon the linke http://verifierip:port/answer with the format of {"plaintext":"xxxx"}
 */
 void Proofer::StartProof() {
 
-//    HttpServer server;
-//    server.config.port = mProoferOpenPort;
+    HttpServer server;
+    server.config.port = mProoferOpenPort;
 
-//    // Accepting public key from key distribution center
-//    cout << "Waiting for the private key from KDC......" << endl;
-//    server.resource["^/privatekey$"]["POST"] = [](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
-//        try {
-//                ptree pt;
-//                read_json(request->content, pt);
-//                Proofer::mPrivKey = pt.get<string>("Private_Key");
+    // Accepting public key from key distribution center
+    cout << "Waiting for the private key from KDC......" << endl;
+    server.resource["^/privatekey$"]["POST"] = [](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
+        try {
+                ptree pt;
+                read_json(request->content, pt);
+                Proofer::mPrivKey = pt.get<string>("Private_Key");
 
-//                if (Proofer::mPrivKey != "") {
-//                    string response_str = "Private Key Accepted Successfully !!";
-//                    *response << "HTTP/1.1 200 OK\r\n"
-//                              << "Content-Length: " << response_str.length() << "\r\n\r\n"
-//                              << response_str;
-//                }
-//                else {
-//                    string response_str = "Private Key Accepted Failed !!";
-//                    *response << "HTTP/1.1 200 OK\r\n"
-//                              << "Content-Length: " << response_str.length() << "\r\n\r\n"
-//                              << response_str;
-//                }
-//            }
-//        catch(const exception &e) {
-//                *response << "HTTP/1.1 400 Bad Request\r\nContent-Length: " << strlen(e.what()) << "\r\n\r\n"
-//                    << e.what();
-//            }
-//    };
+                if (Proofer::mPrivKey != "") {
+                    string response_str = "Private Key Accepted Successfully !!";
+                    *response << "HTTP/1.1 200 OK\r\n"
+                              << "Content-Length: " << response_str.length() << "\r\n\r\n"
+                              << response_str;
+                }
+                else {
+                    string response_str = "Private Key Accepted Failed !!";
+                    *response << "HTTP/1.1 200 OK\r\n"
+                              << "Content-Length: " << response_str.length() << "\r\n\r\n"
+                              << response_str;
+                }
+            }
+        catch(const exception &e) {
+                *response << "HTTP/1.1 400 Bad Request\r\nContent-Length: " << strlen(e.what()) << "\r\n\r\n"
+                    << e.what();
+            }
+    };
 
-//    thread server_thread([&server]() {
-//        // Start server
-//        server.start();
-//    });
+    thread server_thread([&server]() {
+        // Start server
+        server.start();
+    });
 
-//    // check if the private key has been retrieved, if yes, stop server and detach server thread
-//    while(true) {
-//        if (Proofer::mPrivKey != "") {
-//            server.stop();
-//            server_thread.detach();
-//            cout << "Private key received, stopping the key-receiving thread" << endl;
-//            break;
-//        }
-//        else {
-//            usleep(300);
-//        }
-//    }
+    // check if the private key has been retrieved, if yes, stop server and detach server thread
+    while(true) {
+        if (Proofer::mPrivKey != "") {
+            server.stop();
+            server_thread.detach();
+            cout << "Private key received, stopping the key-receiving thread" << endl;
+            break;
+        }
+        else {
+            usleep(300);
+        }
+    }
 
-    // TODO: Send verify request to all verifiers
-//    thread verify_thread[this->mVerifierIPList.size()];
-//    for (int i = 0; i<this->mVerifierIPList.size(); i++) {
-//        verify_thread[i] = thread(Proofer::do_verify, "127.0.0.1", to_string(this->mVerifierOpenPort));
-//        cout<< "test" << endl;
-//    }
+    // Send verify request to all verifiers in different threads asynchronously
+    thread verify_thread[this->mVerifierIPList.size()];
+    for (int i = 0; i<this->mVerifierIPList.size(); i++) {
+        verify_thread[i] = thread(Proofer::do_verify, mVerifierIPList[i], to_string(this->mVerifierOpenPort));
+    }
 
-//    for (int i = 0; i<this->mVerifierIPList.size(); i++) {
-//        verify_thread[i].join();
-//    }
+    for (int i = 0; i<this->mVerifierIPList.size(); i++) {
+        verify_thread[i].join();
+    }
 
-    Proofer::do_verify("127.0.0.1", to_string(this->mVerifierOpenPort));
 
 }
 
@@ -141,33 +140,47 @@ void Proofer::do_verify(string IP_Addr, string port) {
 
         client.request("POST", "/verifyme", "", [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
             if(!ec) {
-                CryptexParts cryptparts = CryptexParts();
-                cout << endl;
-                cout << response->content.rdbuf()<<endl;
 
-//                ptree pt;
-//                read_json(response->content, pt);
+                string recv_string = response->content.string();
 
-//                cryptparts.cryptkey = pt.get<string>("cryptkey");
-//                stringstream geek_keylen(pt.get<string>("cryptkey_len"));
-//                geek_keylen >> cryptparts.cryptkey_len;
-//                cryptparts.crpytbody = pt.get<string>("cryptbody");
-//                stringstream geek_bodylen(pt.get<string>("cryptbody_len"));
-//                geek_bodylen >> cryptparts.cryptbody_len;
+                cryptex4transmit deserialized_cryptex = cryptex4transmit();
+                stringstream iarchive_stream;
+                iarchive_stream << recv_string;
+                boost::archive::text_iarchive iarchive(iarchive_stream);
+                iarchive >> deserialized_cryptex;
+                vector<char> cryptex_body_vec = deserialized_cryptex.cryptex_body_vec;
+                vector<char> cryptex_key_vec = deserialized_cryptex.cryptex_key_vec;
+                uint64_t body_len = deserialized_cryptex.body_len;
+                uint64_t key_len = deserialized_cryptex.key_len;
 
-//                unsigned char * original = NULL;
-//                char hex_priv[] = "013A1DABB6EA5863EB27722325905447CF0702B45B0418D4AEE055DF0D96AA7930D6D24362CEA7E789FF585D4E38451876815239D556CBC6D6EA158C762A6BB3FD35";
-//                if (!(original = ecies_decrypt_by_parts((char*) hex_priv, (unsigned char*)cryptparts.cryptkey.c_str(),
-//                                                        cryptparts.cryptkey_len,
-//                                                        (unsigned char*) cryptparts.crpytbody.c_str(), cryptparts.cryptbody_len))) {
-//                    cout << "The decryption process failed!" << endl;
-//                }
-//                else {
-//                    cout << "The original data is " << original << endl;
-//                }
+                char* cryptex_body = reinterpret_cast<char*>(cryptex_body_vec.data());
+                char* cryptex_key = reinterpret_cast<char*>(cryptex_key_vec.data());
+
+
+                unsigned char * original = NULL;
+
+                if (!(original = ecies_decrypt_by_parts((char*) Proofer::mPrivKey.c_str(), (unsigned char*)cryptex_key,
+                                key_len,
+                                (unsigned char*) cryptex_body, body_len))) {
+                    cout << "The decryption process failed!" << endl;
+
+                }
+                else {
+                        cout << "The decrypted data is " << original << endl;
+                        Proofer::mMyAnswer = atoi((const char*)original);
+                }
             }
           });
-
         client.io_service->run();
 
+
+        // send answer to the verifier
+        string answer_str = "{\"plaintext\":\"" + to_string(Proofer::mMyAnswer);
+        answer_str += "\"}";
+        client.request("POST", "/answer", answer_str, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+            if(!ec) {
+
+            }
+        });
+        client.io_service->run();
 }

@@ -7,6 +7,11 @@
 #include <unistd.h>
 #include <string>
 
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/serialization/vector.hpp>
+
+
 #include "ecies/ecies.h"
 #include "httpimpl/server_http.hpp"
 #include "httpimpl/client_http.hpp"
@@ -45,6 +50,7 @@ private:
     std::map<std::string, CryptexParts> mClent2CrypMap;
     static void do_verify(std::string IP_Addr, std::string port);
     static std::string mPrivKey;
+    static int mMyAnswer;
 };
 
 

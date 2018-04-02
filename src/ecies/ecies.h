@@ -5,11 +5,15 @@
 #include <string>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <boost/serialization/vector.hpp>
 
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/stack.h>
+
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
 
 #include <ctime>
 
@@ -26,6 +30,22 @@ typedef struct {
     } length;
 
 } secure_head_t;
+
+class cryptex4transmit {
+public:
+    std::vector<char> cryptex_body_vec;
+    std::vector<char> cryptex_key_vec;
+    uint64_t body_len;
+    uint64_t key_len;
+    void convert_cryptex2transmit(char* cryptex);
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version) {
+        ar & cryptex_body_vec;
+        ar & cryptex_key_vec;
+        ar & body_len;
+        ar & key_len;
+    }
+};
 
 EC_KEY * ecies_key_create();
 EC_GROUP * ecies_group();

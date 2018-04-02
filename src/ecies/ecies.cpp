@@ -758,3 +758,24 @@ void ecies_example() {
     }
 }
 
+void cryptex4transmit::convert_cryptex2transmit(char* cryptex) {
+
+    this->body_len = secure_body_length(cryptex);
+    this->key_len = secure_key_length(cryptex);
+
+    char body_p[this->body_len];
+    memcpy(body_p, (char*) secure_body_data(cryptex), this->body_len);
+    for (int i = 0; i < this->body_len; i++) {
+        this->cryptex_body_vec.push_back(body_p[i]);
+    }
+
+    char key_p[this->key_len];
+    memcpy(key_p, (char*) secure_key_data(cryptex), this->key_len);
+
+    for (int i = 0; i < this->key_len; i++) {
+        this->cryptex_key_vec.push_back(key_p[i]);
+    }
+
+
+}
+
