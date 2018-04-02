@@ -30,3 +30,15 @@ cmake ..
 make
 cd ..
 ```
+
+To run `Verifier`
+```
+cd build
+./Verifier
+```
+
+To run `Proofer`
+```
+cd build
+./Proofer
+```
