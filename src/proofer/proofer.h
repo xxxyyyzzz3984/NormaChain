@@ -47,7 +47,6 @@ private:
     int mVerifierOpenPort;
     int mProoferOpenPort;
     std::vector<std::string> mVerifierIPList;
-    std::map<std::string, CryptexParts> mClent2CrypMap;
     static void do_verify(std::string IP_Addr, std::string port);
     static std::string mPrivKey;
     static int mMyAnswer;

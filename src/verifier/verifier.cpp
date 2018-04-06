@@ -54,6 +54,7 @@ void Verifier::Serve() {
     server.config.port = mOpenPort;
 
     // Accepting public key from key distribution center
+    cout << "Waiting for public key......" << endl;
     server.resource["^/publickey$"]["POST"] = [](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
         try {
                 ptree pt;

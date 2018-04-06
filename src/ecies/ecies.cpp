@@ -722,7 +722,6 @@ void ecies_example() {
         char* hex_pub = ecies_key_public_get_hex(key);
         char* hex_priv = ecies_key_private_get_hex(key);
 
-        int tlen;
         size_t olen;
         char* ciphered = NULL;
         unsigned char * original = NULL;
@@ -775,7 +774,6 @@ void cryptex4transmit::convert_cryptex2transmit(char* cryptex) {
     for (int i = 0; i < this->key_len; i++) {
         this->cryptex_key_vec.push_back(key_p[i]);
     }
-
 
 }
 

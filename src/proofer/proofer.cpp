@@ -180,6 +180,8 @@ void Proofer::do_verify(string IP_Addr, string port) {
         client.request("POST", "/answer", answer_str, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
             if(!ec) {
 
+                // TODO: wait for concensus dicision from the verifiers
+
             }
         });
         client.io_service->run();
