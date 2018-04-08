@@ -52,6 +52,7 @@ Verifier::Verifier() {
 void Verifier::Serve() {
     HttpServer server;
     server.config.port = mOpenPort;
+    srand(time(NULL));
 
     // Accepting public key from key distribution center
     cout << "Waiting for public key......" << endl;
