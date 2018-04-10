@@ -8,6 +8,7 @@
 #include <string>
 #include <time.h>
 #include <fstream>
+#include <cstdio>
 
 #include "httpimpl/client_http.hpp"
 #include "configparser/configparser.h"
@@ -28,6 +29,7 @@ private:
     	std::vector<std::string> mVerifierIPList;
     	std::string mProoferIP;
 	std::vector<int> mGeneratedRandNums;
+
 	void genUniqNums(int max_num, int num_nums);
 	bool isNumGenerated(int num);
 	void sendGraphFile(std::string filepath);

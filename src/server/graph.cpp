@@ -53,6 +53,9 @@ Graph::Graph() {
  * int num_consortium must be <= number of verifiers
  * */
 void Graph::genRandGraph_TwoLayerChain(int num_consortium) {
+
+    remove("../config/consortium_graph.txt");
+
 	srand(time(NULL));
 	if (num_consortium > mVerifierIPList.size()) {
 		cout << "ERROR: The number of nodes in the consortium chain is greater than the number of verifiers" << endl;
@@ -66,14 +69,16 @@ void Graph::genRandGraph_TwoLayerChain(int num_consortium) {
 	}
 
 	//write the graph file for PBFT to config
-	ofstream consortiumchain_file, publicchain_file;
+    ofstream consortiumchain_file;
 	consortiumchain_file.open("../config/consortium_graph.txt", ios::app);
 	for(int i = 0; i < mConsortiumChain.size(); i++) {
 		consortiumchain_file << mConsortiumChain[i] << endl;
 	}
 
-	consortiumchain_file.close();
+    cout << "Send consortium chain info to verifiers" << endl;
+    sendGraphFile("../config/consortium_graph.txt");
 
+	consortiumchain_file.close();
 	mGeneratedRandNums.clear();
 	mConsortiumChain.clear();
 	mPublicChain.clear();
@@ -81,6 +86,19 @@ void Graph::genRandGraph_TwoLayerChain(int num_consortium) {
 
 // broadcast the graph file to all verifiers (IP list of nodes in consortium chain)
 void Graph::sendGraphFile(string filepath) {
+    std::ifstream t(filepath);
+    std::string consortium_chain_content((std::istreambuf_iterator<char>(t)),
+                     std::istreambuf_iterator<char>());
+
+    HttpClient* client_verifier[mVerifierIPList.size()];
+    for (int i = 0; i<mVerifierIPList.size(); i++) {
+        client_verifier[i] = new HttpClient(mVerifierIPList[i]+":"+to_string(mVerifierOpenPort));
+        client_verifier[i]->request("POST", "/accconsortiumchain", consortium_chain_content, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+            if(!ec) {
+            }
+          });
+        client_verifier[i]->io_service->run();
+    }
 }
 
 void Graph::genUniqNums(int max_num, int num_nums) {
