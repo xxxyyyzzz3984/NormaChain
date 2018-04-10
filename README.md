@@ -1,6 +1,6 @@
 # BlockChain Platform
 
-This project is a novel blockchain distributed concensus framework based on revised PBFT (with <a href="https://www.codecogs.com/eqnedit.php?latex=O(n\log&space;(n))" target="_blank"><img src="https://latex.codecogs.com/gif.latex?O(n\log&space;(n))" title="O(n\log (n))" /></a> computational overhead), and faster public key asymmetric encryption/decryption mechanism (ECIES, i.e., ECC+AES+SHA256). 
+This project is a novel blockchain two-layer architecture, a consortium chain and a public chain. In the consortium chain, PBFT is performed to reach a concensus; in the public chain, the nodes are passively waiting for the concensus decision. 
 
 ## Installation/Getting Started
 
