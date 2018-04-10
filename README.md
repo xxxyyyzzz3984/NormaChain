@@ -7,13 +7,17 @@ This project is a novel two-layer blockchain architecture, a consortium chain an
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
 
 ### Dependencies
+1. Cmake
+```
+sudo apt-get install cmake
+```
 
-1. OpenSSL
+2. OpenSSL
 ```
 sudo apt-get install libssl-dev
 ```
 
-2. Boost (Minimum version 1.55 with Boost.Asio)
+3. Boost (Minimum version 1.55 with Boost.Asio)
 ```
 sudo apt-get install libboost-all-dev
 ```
