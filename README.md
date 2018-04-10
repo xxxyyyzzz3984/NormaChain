@@ -1,6 +1,6 @@
-# BlockChain Platform
+# Smart Home BlockChain Platform
 
-This project is a novel two-layer blockchain architecture, a consortium chain and a public chain. In the consortium chain, PBFT is performed to reach a concensus; in the public chain, the nodes are passively waiting for the concensus decision. 
+This project is a novel two-layer blockchain architecture for smart home, a consortium chain and a public chain. In the consortium chain, PBFT is performed to reach a concensus; in the public chain, the nodes are passively waiting for the concensus decision. 
 
 ## Installation/Getting Started
 
