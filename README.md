@@ -7,7 +7,7 @@ This project is a novel two-layer blockchain architecture, a consortium chain an
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
 
 ### Dependencies
-1. Cmake
+1. CMake
 ```
 sudo apt-get install cmake
 ```
