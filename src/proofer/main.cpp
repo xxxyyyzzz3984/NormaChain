@@ -3,6 +3,5 @@
 int main() {
     Proofer proofer = Proofer();
     proofer.StartProof();
-
     return 1;
 }

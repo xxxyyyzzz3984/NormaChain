@@ -135,10 +135,8 @@ void Proofer::StartProof() {
 // TODO: Send verify request to all verifiers
 void Proofer::do_verify(string IP_Addr, string port) {
 
-        HttpClient client(IP_Addr+":"+port);
-
-
-        client.request("POST", "/verifyme", "", [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+        HttpClient client_requestverify(IP_Addr+":"+port);
+        client_requestverify.request("POST", "/verifyme", "", [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
             if(!ec) {
 
                 string recv_string = response->content.string();
@@ -171,18 +169,23 @@ void Proofer::do_verify(string IP_Addr, string port) {
                 }
             }
           });
-        client.io_service->run();
+        client_requestverify.io_service->run();
 
 
         // send answer to the verifier
+        HttpClient client_ans(IP_Addr+":"+port);
         string answer_str = "{\"plaintext\":\"" + to_string(Proofer::mMyAnswer);
         answer_str += "\"}";
-        client.request("POST", "/answer", answer_str, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+        client_ans.request("POST", "/answer", answer_str, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
             if(!ec) {
 
                 // TODO: wait for concensus dicision from the verifiers
-
+                ptree pt;
+                read_json(response->content, pt);
+                string decision;
+                decision = pt.get<string>("Decision");
+                cout << "The decision is " << decision << endl;
             }
         });
-        client.io_service->run();
+        client_ans.io_service->run();
 }

@@ -10,6 +10,9 @@ std::string Verifier::mPublicKey = "";
 std::string Verifier::mCorrectAns = "";
 bool Verifier::mSelfDecision = false;
 vector<bool> Verifier::mAllConsortNodesDecisions;
+vector<string> Verifier::mConsortiumNodeIPs;
+int Verifier::mOpenPort;
+std::string Verifier::mLocalIPv4;
 
 /* Read the config file from ../config/verifer.config
  * The attribute is OPEN_PORT:xxxx
@@ -26,12 +29,12 @@ Verifier::Verifier() {
     if(parsed_map.size() >= 1) {
         // try best not to change the key name
         stringstream geek(parsed_map["OPEN_PORT"]);
-        geek >> mOpenPort;
-        cout << "Setting HTTP open port at " << mOpenPort << endl;
+        geek >> Verifier::mOpenPort;
+        cout << "Setting HTTP open port at " << Verifier::mOpenPort << endl;
         mInterface = parsed_map["INTERFACE"];
         cout << "Setting interface " << mInterface << endl;
         getLocalIPv4();
-        cout << "The IPv4 address of this node is " << mLocalIPv4 << endl;
+        cout << "The IPv4 address of this node is " << Verifier::mLocalIPv4 << endl;
     }
     else {
         cout << "Config file parse fails !!" << endl;
@@ -83,7 +86,7 @@ void Verifier::getLocalIPv4() {
             // locate the specific interface
             string iterator_interf(ifa->ifa_name);
             if (mInterface.find(iterator_interf) != std::string::npos) {
-                mLocalIPv4 = addressBuffer;
+                Verifier::mLocalIPv4 = addressBuffer;
                 break;
             }
         }
@@ -109,6 +112,8 @@ void Verifier::Serve() {
                     *response << "HTTP/1.1 200 OK\r\n"
                               << "Content-Length: " << response_str.length() << "\r\n\r\n"
                               << response_str;
+
+                    cout << "Public Key Received !" << endl;
                 }
                 else {
                     string response_str = "Public Key Accepted Failed !!";
@@ -131,7 +136,7 @@ void Verifier::Serve() {
                 string random_int_str = to_string(random_int);
                 Verifier::mCorrectAns = random_int_str;
 
-                cout << "The random number is " << random_int << endl;
+//                cout << "The random number is " << random_int << endl;
 
                 //encrypt the random number with the received public key
                 string response_str;
@@ -175,26 +180,64 @@ void Verifier::Serve() {
                 ptree pt;
                 read_json(request->content, pt);
                 string answer = pt.get<string>("plaintext");
-
+                Verifier::mAllConsortNodesDecisions.clear();
                 if (answer != "" && answer == Verifier::mCorrectAns) {
                     Verifier::mSelfDecision = true;
-                    Verifier::mAllConsortNodesDecisions.push_back(Verifier::mSelfDecision);
-                    cout << "The answer is correct !" << endl;
-//                    string response_str = "Public Key Accepted Successfully !!";
-//                    *response << "HTTP/1.1 200 OK\r\n"
-//                              << "Content-Length: " << response_str.length() << "\r\n\r\n"
-//                              << response_str;
                 }
                 else {
                     Verifier::mSelfDecision = false;
-                    cout << "The answer is wrong !" << endl;
-//                    string response_str = "Answer Accepted Failed !!";
-//                    *response << "HTTP/1.1 200 OK\r\n"
-//                              << "Content-Length: " << response_str.length() << "\r\n\r\n"
-//                              << response_str;
                 }
 
                 // TODO: PBFT here and reply the concensus to the proofer
+                Verifier::mAllConsortNodesDecisions.push_back(Verifier::mSelfDecision);
+
+                // send the decision of this node to other consortium nodes
+                thread send_decision_thread([response] {
+                    Verifier::sendDecision2OtherConsortiumVerifiers();
+                });
+                send_decision_thread.detach();
+
+                // Constantly check if decisions are received from all nodes in the consortium chain
+                thread check_concensus_thread([response] {
+                    while (true) {
+                        if (Verifier::mConsortiumNodeIPs.size() > 0
+                                && Verifier::mConsortiumNodeIPs.size() == Verifier::mAllConsortNodesDecisions.size()) {
+                            break;
+                        }
+                        usleep(1);
+                    }
+
+                    // get all the decisions, see if concensus. reply to the proofer and clear the decision stack
+                    int approved_count = 0;
+                    int deny_count = 0;
+                    for (int i = 0; i < mAllConsortNodesDecisions.size(); i++) {
+                        if (mAllConsortNodesDecisions[i]) {
+                            approved_count++;
+                        }
+                        else {
+                            deny_count++;
+                        }
+                    }
+
+                    string decision_str = "{\"Decision\":\"";
+                    if (approved_count > deny_count) {
+                        cout << "Approval Concensus Reached!!" << endl;
+                        decision_str += "True";
+                    }
+                    else {
+                        cout << "Denial Concensus Reached!!" << endl;
+                        decision_str += "False";
+                    }
+                    decision_str += "\"}";
+
+                    *response << "HTTP/1.1 200 OK\r\n"
+                              << "Content-Length: " << decision_str.length() << "\r\n\r\n"
+                              << decision_str;
+
+                    mAllConsortNodesDecisions.clear();
+                });
+                check_concensus_thread.detach();
+
             }
         catch(const exception &e) {
                 *response << "HTTP/1.1 400 Bad Request\r\nContent-Length: " << strlen(e.what()) << "\r\n\r\n"
@@ -216,7 +259,8 @@ void Verifier::Serve() {
                     ofstream consortiumchain_file;
                     consortiumchain_file.open("../config/consortium_graph.txt", ios::app);
                     consortiumchain_file << consortiumchain_str;
-
+                    Verifier::parse_consortium_nodes(consortiumchain_str);
+//                    cout << "Consoritium chain file accepted!" << endl;
                 }
             }
         catch(const exception &e) {
@@ -225,7 +269,7 @@ void Verifier::Serve() {
             }
     };
 
-    // Accept the consortium chain file
+    // Accept decisions from other nodes in the consortium chain
     server.resource["^/otherconsortdecision$"]["POST"] = [](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
         try {
                 ptree pt;
@@ -262,8 +306,40 @@ void Verifier::Serve() {
     server.start();
 }
 
-// TODO: open the consortium chain file
 // send the self decision to all nodes in the consortium chain
 void Verifier::sendDecision2OtherConsortiumVerifiers() {
+    string decision;
+    string answer_str = "{\"IP_Addr\":\"" + Verifier::mLocalIPv4;
+    if (mSelfDecision) {
+        decision = "True";
+    }
+    else {
+        decision = "False";
+    }
+    answer_str += "\",\"Decision\":\"" + decision;
+    answer_str += "\"}";
 
+    HttpClient* client_verifier[Verifier::mConsortiumNodeIPs.size()];
+    for (int i = 0; i<Verifier::mConsortiumNodeIPs.size(); i++) {
+        // skip self ip
+        if (Verifier::mConsortiumNodeIPs[i].find(Verifier::mLocalIPv4) != std::string::npos) {
+            continue;
+        }
+
+        client_verifier[i] = new HttpClient(Verifier::mConsortiumNodeIPs[i]+":"+to_string(Verifier::mOpenPort));
+        client_verifier[i]->request("POST", "/otherconsortdecision", answer_str, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+            if(!ec) {
+            }
+          });
+        client_verifier[i]->io_service->run();
+    }
+}
+
+void Verifier::parse_consortium_nodes(std::string nodes_str) {
+    stringstream ss(nodes_str);
+    std::string to;
+    Verifier::mConsortiumNodeIPs.clear();
+    while(std::getline(ss,to,'\n')) {
+        Verifier::mConsortiumNodeIPs.push_back(to);
+    }
 }

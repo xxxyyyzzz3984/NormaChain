@@ -31,7 +31,7 @@ Compile with a C++11 compliant compiler
 mkdir build
 cd build
 cmake ..
-make
+make -j4
 cd ..
 ```
 

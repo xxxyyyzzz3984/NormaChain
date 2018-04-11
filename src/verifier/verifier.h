@@ -13,6 +13,8 @@
 #include <ifaddrs.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <thread>
+#include <unistd.h>
 
 #include "ecies/ecies.h"
 #include "httpimpl/server_http.hpp"
@@ -32,15 +34,17 @@ public:
     void Serve();
 private:
     ConfigParser mConfigParser;
-    int mOpenPort;
+    static int mOpenPort;
     static std::string mPublicKey;
     static std::string mCorrectAns;
     static bool mSelfDecision;
     static std::vector<bool> mAllConsortNodesDecisions;
+    static std::vector<std::string> mConsortiumNodeIPs;
     std::string mInterface;
-    std::string mLocalIPv4;
+    static std::string mLocalIPv4;
     void getLocalIPv4();
-    void sendDecision2OtherConsortiumVerifiers();
+    static void sendDecision2OtherConsortiumVerifiers();
+    static void parse_consortium_nodes(std::string nodes_str);
 };
 
 #endif
