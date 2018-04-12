@@ -9,17 +9,22 @@ The encryption mechanism is ECIES (ECC + AES + SHA256).
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
 
 ### Dependencies
-1. CMake
+1. Essentials
+```
+sudo apt-get -qq update
+sudo apt-get install -y cmake build-essential pkg-config libssl-dev
+```
+2. CMake
 ```
 sudo apt-get install cmake
 ```
 
-2. OpenSSL
+3. OpenSSL
 ```
 sudo apt-get install libssl-dev
 ```
 
-3. Boost with Boost.Asio
+4. Boost with Boost.Asio
 ```
 sudo apt-get install libboost-all-dev
 ```
