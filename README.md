@@ -1,6 +1,6 @@
 # Smart Home BlockChain Platform
 [![Build Status](https://travis-ci.org/yinhaoxiao/Smart-Home-Blockchain-Platform.svg?branch=master)](https://travis-ci.org/yinhaoxiao/Smart-Home-Blockchain-Platform)
-[![License](https://img.shields.io/github/license/Smart-Home-Blockchain-Platform/Smart-Home-Blockchain-Platform.svg)](https://github.com/yinhaoxiao/Smart-Home-Blockchain-Platform/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/yinhaoxiao/Smart-Home-Blockchain-Platform/blob/master/LICENSE)
 
 
 This project is a novel two-layer blockchain architecture for the smart home, a consortium chain, and a public chain. In the consortium chain, PBFT is performed to reach a consensus; in the public chain, the nodes are passively waiting for the consensus decision. 
