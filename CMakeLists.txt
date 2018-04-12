@@ -17,7 +17,7 @@ endif()
 ##############
 
 ############# finding Boost Libraries ######
-find_package(Boost 1.55 REQUIRED COMPONENTS system thread serialization)
+find_package(Boost REQUIRED COMPONENTS system thread serialization)
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})

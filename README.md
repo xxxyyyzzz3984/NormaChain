@@ -18,7 +18,7 @@ sudo apt-get install cmake
 sudo apt-get install libssl-dev
 ```
 
-3. Boost (Minimum version 1.55 with Boost.Asio)
+3. Boost with Boost.Asio
 ```
 sudo apt-get install libboost-all-dev
 ```
