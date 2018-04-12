@@ -1,7 +1,21 @@
 sudo: required
 
+language: cpp
+
+os: linux
+
 services:
   - docker
+  
+install:
+  # note: use option '-t' for 'docker exec' to enable colored output
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      docker exec -t ci /bin/sh -c "
+        apt-get -qq update;
+        apt-get install -y cmake build-essential pkg-config libssl-dev;
+        apt-get install -y libboost-all-dev
+      ";
+    fi
 
 script:
   - sudo docker run -it -v "$PWD:/repository" eidheim/testing sh -c "
