@@ -6,5 +6,5 @@ services:
 script:
   - sudo docker run -it -v "$PWD:/repository" eidheim/testing sh -c "
       cd /repository && mkdir build && cd build && 
-      cmake && make -j4
+      cmake.. && make -j4
       "
