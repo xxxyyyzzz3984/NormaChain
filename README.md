@@ -1,3 +1,7 @@
+<h1 align="center">
+	<img width="300" src="https://github.com/yinhaoxiao/Smart-Home-Blockchain-Platform/blob/master/image.jpg" alt="logo">
+</h1>
+
 # Smart Home BlockChain Platform
 [![Build Status](https://travis-ci.org/yinhaoxiao/Smart-Home-Blockchain-Platform.svg?branch=master)](https://travis-ci.org/yinhaoxiao/Smart-Home-Blockchain-Platform)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/yinhaoxiao/Smart-Home-Blockchain-Platform/blob/master/LICENSE)
