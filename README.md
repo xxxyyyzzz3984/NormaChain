@@ -12,7 +12,7 @@ These instructions will get you a copy of the project up and running on your loc
 1. Essentials
 ```
 sudo apt-get -qq update
-sudo apt-get install -y cmake build-essential pkg-config libssl-dev
+sudo apt-get install -y build-essential pkg-config
 ```
 2. CMake
 ```
