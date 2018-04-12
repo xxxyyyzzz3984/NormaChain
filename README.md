@@ -1,5 +1,5 @@
 <h1 align="center">
-	<img width="300" src="https://github.com/yinhaoxiao/Smart-Home-Blockchain-Platform/blob/master/image.jpg" alt="logo">
+	<img width="100%" src="https://github.com/yinhaoxiao/Smart-Home-Blockchain-Platform/blob/master/image.jpg" alt="logo">
 </h1>
 
 # Smart Home BlockChain Platform
