@@ -47,3 +47,9 @@ To run `Proofer`
 cd build
 ./Proofer
 ```
+
+To run `Server`
+```
+cd build
+./Server
+```
