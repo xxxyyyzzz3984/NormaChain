@@ -1,15 +1,11 @@
-sudo: required
-
 os: linux
 
-services:
-  - docker
-    
+sudo: enable
     
 before_install:
   - sudo apt-get -qq update
-  - apt-get install -y cmake build-essential pkg-config libssl-dev
-  - apt-get install -y libboost-all-dev
+  - sudo apt-get install -y cmake build-essential pkg-config libssl-dev
+  - sudo apt-get install -y libboost-all-dev
 
 before_script: cd project
 
