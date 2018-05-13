@@ -4,7 +4,7 @@ using namespace std;
 using namespace boost::property_tree;
 
 string Proofer::mPrivKey = "";
-int Proofer::mMyAnswer = 0;
+string Proofer::mDecision = "";
 
 CryptexParts::CryptexParts() {
     this->cryptbody_len = 0;
@@ -68,7 +68,7 @@ Proofer::Proofer() {
  *(3). Then the proofer uses the private key to decrypt the ciphtertext and passes the plaintext number back to verifier
  * upon the linke http://verifierip:port/answer with the format of {"plaintext":"xxxx"}
 */
-void Proofer::StartProof() {
+void Proofer::Wait4PrivateKey() {
 
     HttpServer server;
     server.config.port = mProoferOpenPort;
@@ -118,6 +118,10 @@ void Proofer::StartProof() {
         }
     }
 
+}
+
+// wait couples seconds after receiving the private key
+void Proofer::StartProof() {
     // Send verify request to all verifiers in different threads asynchronously
     thread verify_thread[this->mVerifierIPList.size()];
     for (int i = 0; i<this->mVerifierIPList.size(); i++) {
@@ -127,65 +131,69 @@ void Proofer::StartProof() {
     for (int i = 0; i<this->mVerifierIPList.size(); i++) {
         verify_thread[i].join();
     }
-
-
 }
 
 // Asynchronous request
 // TODO: Send verify request to all verifiers
 void Proofer::do_verify(string IP_Addr, string port) {
 
-        HttpClient client_requestverify(IP_Addr+":"+port);
-        client_requestverify.request("POST", "/verifyme", "", [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
-            if(!ec) {
+    int answer;
+    HttpClient client_requestverify(IP_Addr+":"+port);
+    client_requestverify.request("POST", "/verifyme", "", [&answer](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+        if(!ec) {
+            string recv_string = response->content.string();
+            cryptex4transmit deserialized_cryptex = cryptex4transmit();
+            stringstream iarchive_stream;
+            iarchive_stream << recv_string;
+            boost::archive::text_iarchive iarchive(iarchive_stream);
+            iarchive >> deserialized_cryptex;
+            vector<char> cryptex_body_vec = deserialized_cryptex.cryptex_body_vec;
+            vector<char> cryptex_key_vec = deserialized_cryptex.cryptex_key_vec;
+            uint64_t body_len = deserialized_cryptex.body_len;
+            uint64_t key_len = deserialized_cryptex.key_len;
 
-                string recv_string = response->content.string();
-
-                cryptex4transmit deserialized_cryptex = cryptex4transmit();
-                stringstream iarchive_stream;
-                iarchive_stream << recv_string;
-                boost::archive::text_iarchive iarchive(iarchive_stream);
-                iarchive >> deserialized_cryptex;
-                vector<char> cryptex_body_vec = deserialized_cryptex.cryptex_body_vec;
-                vector<char> cryptex_key_vec = deserialized_cryptex.cryptex_key_vec;
-                uint64_t body_len = deserialized_cryptex.body_len;
-                uint64_t key_len = deserialized_cryptex.key_len;
-
-                char* cryptex_body = reinterpret_cast<char*>(cryptex_body_vec.data());
-                char* cryptex_key = reinterpret_cast<char*>(cryptex_key_vec.data());
+            char* cryptex_body = reinterpret_cast<char*>(cryptex_body_vec.data());
+            char* cryptex_key = reinterpret_cast<char*>(cryptex_key_vec.data());
 
 
-                unsigned char * original = NULL;
+            unsigned char * original = NULL;
 
-                if (!(original = ecies_decrypt_by_parts((char*) Proofer::mPrivKey.c_str(), (unsigned char*)cryptex_key,
-                                key_len,
-                                (unsigned char*) cryptex_body, body_len))) {
-                    cout << "The decryption process failed!" << endl;
+            if (!(original = ecies_decrypt_by_parts((char*) Proofer::mPrivKey.c_str(), (unsigned char*)cryptex_key,
+                            key_len,
+                            (unsigned char*) cryptex_body, body_len))) {
+                cout << "The decryption process failed!" << endl;
 
-                }
-                else {
-                        cout << "The decrypted data is " << original << endl;
-                        Proofer::mMyAnswer = atoi((const char*)original);
-                }
             }
-          });
-        client_requestverify.io_service->run();
-
-
-        // send answer to the verifier
-        HttpClient client_ans(IP_Addr+":"+port);
-        string answer_str = "{\"plaintext\":\"" + to_string(Proofer::mMyAnswer);
-        answer_str += "\"}";
-        client_ans.request("POST", "/answer", answer_str, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
-            if(!ec) {
-
-                // TODO: wait for concensus dicision from the verifiers
-                ptree pt;
-                read_json(response->content, pt);
-                string decision;
-                decision = pt.get<string>("Decision");
-                cout << "The decision is " << decision << endl;
+            else {
+                    cout << "The decrypted data is " << original << endl;
+                    answer = atoi((const char*)original);
             }
-        });
-        client_ans.io_service->run();
+        }
+      });
+    client_requestverify.io_service->run();
+
+
+    // send answer to the verifier
+    HttpClient client_ans(IP_Addr+":"+port);
+    string answer_str = "{\"plaintext\":\"" + to_string(answer);
+    answer_str += "\"}";
+    cout << "send " << answer_str << " to " << IP_Addr << endl;
+    client_ans.request("POST", "/answer", answer_str, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+        if(!ec) {
+
+            // TODO: wait for concensus dicision from the verifiers
+            ptree pt;
+            read_json(response->content, pt);
+            string decision;
+            decision = pt.get<string>("Decision");
+            cout << "The decision is " << decision << endl;
+            Proofer::mDecision = decision;
+        }
+    });
+    client_ans.io_service->run();
+
+    HttpClient client_end(IP_Addr+":"+port);
+    client_end.request("POST", "/endround", "",
+                       [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {if(!ec) {}});
+    client_end.io_service->run();
 }

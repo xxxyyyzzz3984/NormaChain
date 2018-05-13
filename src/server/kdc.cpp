@@ -62,6 +62,18 @@ void KDC::GenKeyAndDistribute() {
         string publickey_msg = "{\"Public_Key\":\"" + public_key + "\"}";
         string privatekey_msg = "{\"Private_Key\":\"" + private_key + "\"}";
 
+        // send public key to all verifiers
+        HttpClient* client_verifier[mVerifierIPList.size()];
+        for (int i = 0; i<mVerifierIPList.size(); i++) {
+            client_verifier[i] = new HttpClient(mVerifierIPList[i]+":"+to_string(mVerifierOpenPort));
+	    client_verifier[i]->request("POST", "/publickey", publickey_msg, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+                if(!ec) {
+
+                }
+              });
+            client_verifier[i]->io_service->run();
+        }
+
         // send private key to proofer
         HttpClient client_proof(mProoferIP+":"+to_string(mProoferOpenPort));
         client_proof.request("POST", "/privatekey", privatekey_msg, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
@@ -71,16 +83,5 @@ void KDC::GenKeyAndDistribute() {
           });
         client_proof.io_service->run();
 
-        // send public key to all verifiers
-        HttpClient* client_verifier[mVerifierIPList.size()];
-        for (int i = 0; i<mVerifierIPList.size(); i++) {
-            client_verifier[i] = new HttpClient(mVerifierIPList[i]+":"+to_string(mVerifierOpenPort));
-            client_verifier[i]->request("POST", "/publickey", publickey_msg, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
-                if(!ec) {
-
-                }
-              });
-            client_verifier[i]->io_service->run();
-        }
     }
 }

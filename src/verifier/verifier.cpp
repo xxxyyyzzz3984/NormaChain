@@ -106,7 +106,6 @@ void Verifier::Serve() {
                 ptree pt;
                 read_json(request->content, pt);
                 Verifier::mPublicKey = pt.get<string>("Public_Key");
-
                 if (Verifier::mPublicKey != "") {
                     string response_str = "Public Key Accepted Successfully !!";
                     *response << "HTTP/1.1 200 OK\r\n"
@@ -132,7 +131,7 @@ void Verifier::Serve() {
     server.resource["^/verifyme$"]["POST"] = [](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
         try {
                 //generate a random number between 0 to 99,999
-                int random_int = rand() % 100000;
+                unsigned long random_int = rand() % 100000;
                 string random_int_str = to_string(random_int);
                 Verifier::mCorrectAns = random_int_str;
 
@@ -180,12 +179,11 @@ void Verifier::Serve() {
                 ptree pt;
                 read_json(request->content, pt);
                 string answer = pt.get<string>("plaintext");
-                Verifier::mAllConsortNodesDecisions.clear();
-                if (answer != "" && answer == Verifier::mCorrectAns) {
-                    Verifier::mSelfDecision = true;
+                if (answer != "" && Verifier::mCorrectAns.find(answer) != std::string::npos) {
+                    mSelfDecision = true;
                 }
                 else {
-                    Verifier::mSelfDecision = false;
+                    mSelfDecision = false;
                 }
 
                 // TODO: PBFT here and reply the concensus to the proofer
@@ -199,6 +197,9 @@ void Verifier::Serve() {
 
                 // Constantly check if decisions are received from all nodes in the consortium chain
                 thread check_concensus_thread([response] {
+
+                    int approved_count = 0;
+                    int deny_count = 0;
                     while (true) {
                         if (Verifier::mConsortiumNodeIPs.size() > 0
                                 && Verifier::mConsortiumNodeIPs.size() == Verifier::mAllConsortNodesDecisions.size()) {
@@ -208,16 +209,14 @@ void Verifier::Serve() {
                     }
 
                     // get all the decisions, see if concensus. reply to the proofer and clear the decision stack
-                    int approved_count = 0;
-                    int deny_count = 0;
-                    for (int i = 0; i < mAllConsortNodesDecisions.size(); i++) {
+                   for (int i = 0; i < mAllConsortNodesDecisions.size(); i++) {
                         if (mAllConsortNodesDecisions[i]) {
                             approved_count++;
                         }
                         else {
                             deny_count++;
                         }
-                    }
+                   }
 
                     string decision_str = "{\"Decision\":\"";
                     if (approved_count > deny_count) {
@@ -234,7 +233,6 @@ void Verifier::Serve() {
                               << "Content-Length: " << decision_str.length() << "\r\n\r\n"
                               << decision_str;
 
-                    mAllConsortNodesDecisions.clear();
                 });
                 check_concensus_thread.detach();
 
@@ -278,7 +276,8 @@ void Verifier::Serve() {
                 string other_consrtchain_des;
                 other_consortchain_ip = pt.get<string>("IP_Addr");
                 other_consrtchain_des = pt.get<string>("Decision");
-
+                cout << "Decision from " << other_consortchain_ip
+                     << "  " << other_consrtchain_des << " has been received" << endl;
                 if (other_consortchain_ip != "" && other_consrtchain_des != "") {
                     string response_str = "Consortium chain confirmed !!";
                                         *response << "HTTP/1.1 200 OK\r\n"
@@ -293,6 +292,23 @@ void Verifier::Serve() {
                         Verifier::mAllConsortNodesDecisions.push_back(false);
                     }
                 }
+
+            }
+        catch(const exception &e) {
+                *response << "HTTP/1.1 400 Bad Request\r\nContent-Length: " << strlen(e.what()) << "\r\n\r\n"
+                    << e.what();
+            }
+    };
+
+    // Notify if the verification round is completed
+    server.resource["^/endround$"]["POST"] = [](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
+        try {
+                cout << "The verification round has ended, clear decision stack" << endl;
+                mAllConsortNodesDecisions.clear();
+                string resp_str = "End Confirmed!";
+                *response << "HTTP/1.1 200 OK\r\n"
+                          << "Content-Length: " << resp_str.length()
+                          << "\r\n\r\n" << resp_str;
 
             }
         catch(const exception &e) {
@@ -319,19 +335,20 @@ void Verifier::sendDecision2OtherConsortiumVerifiers() {
     answer_str += "\",\"Decision\":\"" + decision;
     answer_str += "\"}";
 
-    HttpClient* client_verifier[Verifier::mConsortiumNodeIPs.size()];
+    // HttpClient* client_verifier[Verifier::mConsortiumNodeIPs.size()];
     for (int i = 0; i<Verifier::mConsortiumNodeIPs.size(); i++) {
         // skip self ip
         if (Verifier::mConsortiumNodeIPs[i].find(Verifier::mLocalIPv4) != std::string::npos) {
             continue;
         }
 
-        client_verifier[i] = new HttpClient(Verifier::mConsortiumNodeIPs[i]+":"+to_string(Verifier::mOpenPort));
-        client_verifier[i]->request("POST", "/otherconsortdecision", answer_str, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+        HttpClient client_verifier(Verifier::mConsortiumNodeIPs[i]+":"+to_string(Verifier::mOpenPort));
+	cout << "send decision to " << Verifier::mConsortiumNodeIPs[i] << " " << endl;
+        client_verifier.request("POST", "/otherconsortdecision", answer_str, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
             if(!ec) {
             }
           });
-        client_verifier[i]->io_service->run();
+        client_verifier.io_service->run();
     }
 }
 

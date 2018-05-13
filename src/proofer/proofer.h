@@ -40,7 +40,9 @@ class Proofer
 
 public:
     Proofer();
+    void Wait4PrivateKey();
     void StartProof();
+    static std::string mDecision;
 
 private:
     ConfigParser mConfigParser;
@@ -49,7 +51,6 @@ private:
     std::vector<std::string> mVerifierIPList;
     static void do_verify(std::string IP_Addr, std::string port);
     static std::string mPrivKey;
-    static int mMyAnswer;
 };
 
 
