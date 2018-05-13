@@ -75,7 +75,7 @@ void Graph::genRandGraph_TwoLayerChain(int num_consortium) {
 		consortiumchain_file << mConsortiumChain[i] << endl;
 	}
 
-    cout << "Send consortium chain info to verifiers" << endl;
+    cout << "Send consortium chain info to verifiers and proofer" << endl;
     sendGraphFile("../config/consortium_graph.txt");
 
 	consortiumchain_file.close();
@@ -99,6 +99,13 @@ void Graph::sendGraphFile(string filepath) {
           });
         client_verifier[i]->io_service->run();
     }
+
+    HttpClient client_proofer(mProoferIP+":"+to_string(mProoferOpenPort));
+    client_proofer.request("POST", "/accconsortiumchain", consortium_chain_content, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+        if(!ec) {
+        }
+      });
+    client_proofer.io_service->run();
 }
 
 void Graph::genUniqNums(int max_num, int num_nums) {

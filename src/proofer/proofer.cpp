@@ -5,6 +5,7 @@ using namespace boost::property_tree;
 
 string Proofer::mPrivKey = "";
 string Proofer::mDecision = "";
+std::vector<std::string> Proofer::mVerifierIPList;
 
 CryptexParts::CryptexParts() {
     this->cryptbody_len = 0;
@@ -40,18 +41,6 @@ Proofer::Proofer() {
     }
     else {
         cout << "Proofer config file parse fails !!" << endl;
-    }
-
-
-    //Third, open the node_ip list config file
-    // to maintain a list of IP addresses of all verifier
-    mConfigParser.OpenFile("../config/node_ip.config");
-    parsed_map.clear();
-    parsed_map = this->mConfigParser.Parse();
-    for(map<string,string>::iterator it = parsed_map.begin(); it != parsed_map.end(); ++it) {
-        if (it->first.find("verifier") != std::string::npos) {
-            this->mVerifierIPList.push_back(parsed_map[it->first]);
-        }
     }
 }
 
@@ -100,6 +89,30 @@ void Proofer::Wait4PrivateKey() {
             }
     };
 
+
+    // Accept the consortium chain file
+    server.resource["^/accconsortiumchain$"]["POST"] = [](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
+        try {
+                remove("../config/consortium_graph.txt");
+                string consortiumchain_str = request->content.string();
+                if (consortiumchain_str != "") {
+                    string response_str = "Consortium chain confirmed !!";
+                                        *response << "HTTP/1.1 200 OK\r\n"
+                                                  << "Content-Length: " << response_str.length() << "\r\n\r\n"
+                                                  << response_str;
+
+                    ofstream consortiumchain_file;
+                    consortiumchain_file.open("../config/consortium_graph.txt", ios::app);
+                    consortiumchain_file << consortiumchain_str;
+                    Proofer::parse_consortium_nodes(consortiumchain_str);
+                }
+            }
+        catch(const exception &e) {
+                *response << "HTTP/1.1 400 Bad Request\r\nContent-Length: " << strlen(e.what()) << "\r\n\r\n"
+                    << e.what();
+            }
+    };
+
     thread server_thread([&server]() {
         // Start server
         server.start();
@@ -107,7 +120,7 @@ void Proofer::Wait4PrivateKey() {
 
     // check if the private key has been retrieved, if yes, stop server and detach server thread
     while(true) {
-        if (Proofer::mPrivKey != "") {
+        if (Proofer::mPrivKey != "" && Proofer::mVerifierIPList.size() > 0) {
             server.stop();
             server_thread.detach();
             cout << "Private key received, stopping the key-receiving thread" << endl;
@@ -123,12 +136,12 @@ void Proofer::Wait4PrivateKey() {
 // wait couples seconds after receiving the private key
 void Proofer::StartProof() {
     // Send verify request to all verifiers in different threads asynchronously
-    thread verify_thread[this->mVerifierIPList.size()];
-    for (int i = 0; i<this->mVerifierIPList.size(); i++) {
-        verify_thread[i] = thread(Proofer::do_verify, mVerifierIPList[i], to_string(this->mVerifierOpenPort));
+    thread verify_thread[Proofer::mVerifierIPList.size()];
+    for (int i = 0; i<Proofer::mVerifierIPList.size(); i++) {
+        verify_thread[i] = thread(Proofer::do_verify, Proofer::mVerifierIPList[i], to_string(this->mVerifierOpenPort));
     }
 
-    for (int i = 0; i<this->mVerifierIPList.size(); i++) {
+    for (int i = 0; i<Proofer::mVerifierIPList.size(); i++) {
         verify_thread[i].join();
     }
 }
@@ -196,4 +209,13 @@ void Proofer::do_verify(string IP_Addr, string port) {
     client_end.request("POST", "/endround", "",
                        [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {if(!ec) {}});
     client_end.io_service->run();
+}
+
+void Proofer::parse_consortium_nodes(std::string nodes_str) {
+    stringstream ss(nodes_str);
+    std::string to;
+    Proofer::mVerifierIPList.clear();
+    while(std::getline(ss,to,'\n')) {
+        Proofer::mVerifierIPList.push_back(to);
+    }
 }

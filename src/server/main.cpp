@@ -4,7 +4,7 @@
 int main() {
 	Graph graph_generator;
     graph_generator.genRandGraph_TwoLayerChain(2);
-     KDC keydistcenter;
-     keydistcenter.GenKeyAndDistribute();
+    KDC keydistcenter;
+    keydistcenter.GenKeyAndDistribute();
     return 1;
 }

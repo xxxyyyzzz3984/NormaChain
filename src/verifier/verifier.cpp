@@ -258,7 +258,6 @@ void Verifier::Serve() {
                     consortiumchain_file.open("../config/consortium_graph.txt", ios::app);
                     consortiumchain_file << consortiumchain_str;
                     Verifier::parse_consortium_nodes(consortiumchain_str);
-//                    cout << "Consoritium chain file accepted!" << endl;
                 }
             }
         catch(const exception &e) {

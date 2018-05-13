@@ -48,9 +48,11 @@ private:
     ConfigParser mConfigParser;
     int mVerifierOpenPort;
     int mProoferOpenPort;
-    std::vector<std::string> mVerifierIPList;
+    static std::vector<std::string> mVerifierIPList;
     static void do_verify(std::string IP_Addr, std::string port);
     static std::string mPrivKey;
+    static void parse_consortium_nodes(std::string nodes_str);
+
 };
 
 
