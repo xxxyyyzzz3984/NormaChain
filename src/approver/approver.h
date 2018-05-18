@@ -52,6 +52,7 @@ private:
     Contract mContract;
     bool mDecision;
     string mDecision4Buyer;
+    string mApproveRequestor;
     vector<bool>mAllApproverDecisions;
 
 };

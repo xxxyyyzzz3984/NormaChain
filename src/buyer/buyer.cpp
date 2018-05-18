@@ -126,7 +126,10 @@ void Buyer::Transact(int seller_index, string product, string description) {
     HttpClient approver_client("10.42.0.1:6666");
     approver_client.request("POST", "/contract", archive_stream.str(), [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
         if(!ec) {
-
+            ptree pt;
+            read_json(response->content, pt);
+            string decision = pt.get<string>("decision");
+            cout << "The decision is " << decision << endl;
         }
       });
       approver_client.io_service->run();

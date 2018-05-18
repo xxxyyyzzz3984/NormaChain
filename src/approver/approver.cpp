@@ -5,11 +5,13 @@ using namespace std;
 Approver::Approver() {
     mDecision = false;
     mDecision4Buyer = "";
+    mApproveRequestor = "";
 }
 
 Approver::Approver(string approver_info_filepath, string approver_list_filepath) {
     mDecision = false;
     mDecision4Buyer = "";
+    mApproveRequestor = "";
     Load_Files(approver_info_filepath, approver_list_filepath);
 }
 
@@ -97,16 +99,12 @@ void Approver::__waitforContract(HttpServer& server) {
                 if (mDecision4Buyer != "") {
                     break;
                 }
-                usleep(10);
+                usleep(1);
             }
-
-            mAllApproverDecisions.clear();
-            mDecision4Buyer = "";
-            mDecision = false;
 
             string decision_str = "{\"decision\": \"";
             decision_str += mDecision4Buyer + "\"}";
-            cout << "send decision " << mDecision4Buyer << " back to buyter" << endl;
+            cout << "Send decision " << mDecision4Buyer << "back to buyer" << endl;
             *response << "HTTP/1.1 200 OK\r\n"
                       << "Content-Length: " << decision_str.length() << "\r\n\r\n"
                       << decision_str;
@@ -115,6 +113,10 @@ void Approver::__waitforContract(HttpServer& server) {
           *response << "HTTP/1.1 400 Bad Request\r\nContent-Length: " << strlen(e.what()) << "\r\n\r\n"
                     << e.what();
         }
+
+        mAllApproverDecisions.clear();
+        mDecision4Buyer = "";
+        mDecision = false;
     };
 
 
@@ -130,54 +132,56 @@ void Approver::__waitforApprovalRequest(HttpServer& server) {
               read_json(request->content, pt);
 
               string approver_addr = pt.get<string>("Approver_Addr");
-              cout << "Received an approval request from " << approver_addr;
               for (int i = 0; i < mApproverList.size(); i++) {
                   // legitimate approver
+                  approver_addr.erase(remove(approver_addr.begin(), approver_addr.end(), '\n'), approver_addr.end());
                   if (approver_addr.find(mApproverList[i].getAddr()) != std::string::npos) {
+                      mApproveRequestor = approver_addr;
                       mDecision = true;
                       break;
                   }
               }
-
+              mAllApproverDecisions.push_back(mDecision);
               this->__sendDecision2Others();
 
               thread check_concensus_thread([response, this] {
-              int approved_count = 0;
-              int deny_count = 0;
-              while (true) {
-                  if (mAllApproverDecisions.size() > 0
-                          && mAllApproverDecisions.size() >= mApproverList.size()-1) {
-                      break;
+                  int approved_count = 0;
+                  int deny_count = 0;
+                  while (true) {
+                      if (mAllApproverDecisions.size() > 0
+                              && mAllApproverDecisions.size() >= mApproverList.size()-1) {
+                          break;
+                      }
+                      usleep(1);
                   }
-                  usleep(1);
-              }
 
-              // get all the decisions, see if concensus. reply to the proofer and clear the decision stack
-             for (int i = 0; i < mAllApproverDecisions.size(); i++) {
-                  if (mAllApproverDecisions[i]) {
-                      approved_count++;
-                  }
-                  else {
-                      deny_count++;
-                  }
-             }
+                  // get all the decisions, see if concensus. reply to the proofer and clear the decision stack
+                 for (int i = 0; i < mAllApproverDecisions.size(); i++) {
+                      if (mAllApproverDecisions[i]) {
+                          approved_count++;
+                      }
+                      else {
+                          deny_count++;
+                      }
+                 }
 
-             string decision_str = "{\"Decision\":\"";
-             if (approved_count > deny_count) {
-                 cout << "Approval Concensus Reached!!" << endl;
-                 decision_str += "True";
-             }
-             else {
-                 cout << "Denial Concensus Reached!!" << endl;
-                 decision_str += "False";
-             }
-             mAllApproverDecisions.clear();
-             mDecision = false;
-             decision_str += "\"}";
+                 string decision_str = "{\"Decision\":\"";
+                 if (approved_count > deny_count) {
+                     cout << "Approval Concensus Reached!!" << endl;
+                     decision_str += "True";
+                 }
+                 else {
+                     cout << "Denial Concensus Reached!!" << endl;
+                     decision_str += "False";
+                 }
+                 mApproveRequestor = "";
+                 mAllApproverDecisions.clear();
+                 mDecision = false;
+                 decision_str += "\"}";
 
-             *response << "HTTP/1.1 200 OK\r\n"
-                       << "Content-Length: " << decision_str.length() << "\r\n\r\n"
-                       << decision_str;
+                 *response << "HTTP/1.1 200 OK\r\n"
+                           << "Content-Length: " << decision_str.length() << "\r\n\r\n"
+                           << decision_str;
              });
              check_concensus_thread.detach();
         }
@@ -198,7 +202,7 @@ void Approver::__waitforOtherDecisions(HttpServer& server) {
                 read_json(request->content, pt);
                 string other_des;
                 other_des = pt.get<string>("decision");
-                cout << "recieve a decision " << other_des << endl;
+                cout << "Recieve a decision " << other_des << endl;
                 string response_str = "Decision received !";
                             *response << "HTTP/1.1 200 OK\r\n"
                                       << "Content-Length: " << response_str.length() << "\r\n\r\n"
@@ -221,26 +225,26 @@ void Approver::__waitforOtherDecisions(HttpServer& server) {
 }
 
 void Approver::__sendApprovalRequest() {
-        thread request_approval_thread([this] {
          for (int i = 0; i < mApproverList.size(); i++) {
              if(mApproverList[i].getAddr().find(mSelfAddr) != string::npos) {
                  continue;
              }
-            HttpClient approvalrequest_client(mApproverList[i].getIPAddr() + ":" + mApproverList[i].getOpenPort());
-            string request_json_str = "{\"Approver_Addr\": \"" + mSelfAddr +"\"}";
-            approvalrequest_client.request("POST", "/approvalrequests", request_json_str, [this](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
-                if(!ec) {
-                    ptree pt;
-                    read_json(response->content, pt);
-                    string decision_str = pt.get<string>("Decision");
-                    mDecision4Buyer = decision_str;
-                    cout << "The decision is " << decision_str << endl;
-                }
-              });
-              approvalrequest_client.io_service->run();
+            thread request_approval_thread([i, this] {
+                HttpClient approvalrequest_client(mApproverList[i].getIPAddr() + ":" + mApproverList[i].getOpenPort());
+                string request_json_str = "{\"Approver_Addr\": \"" + mSelfAddr +"\"}";
+                approvalrequest_client.request("POST", "/approvalrequests", request_json_str, [this](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+                    if(!ec) {
+                        ptree pt;
+                        read_json(response->content, pt);
+                        string decision_str = pt.get<string>("Decision");
+                        mDecision4Buyer = decision_str;
+                        cout << "The decision is " << decision_str << endl;
+                    }
+                  });
+                  approvalrequest_client.io_service->run();
+            });
+            request_approval_thread.detach();
          }
-        });
-        request_approval_thread.detach();
 
 }
 
@@ -253,24 +257,30 @@ void Approver::__save_contract(string path) {
 void Approver::__sendDecision2Others() {
     // HttpClient* client_verifier[Verifier::mConsortiumNodeIPs.size()];
     for (int i = 0; i<mApproverList.size(); i++) {
-        // skip self
-        if (mApproverList[i].getAddr().find(mSelfAddr) != std::string::npos) {
+        if (mApproverList[i].getAddr().find(mSelfAddr) != std::string::npos ||
+                mApproveRequestor.find(mApproverList[i].getAddr()) != std::string::npos) {
+            cout << mApproveRequestor << "   " << mApproverList[i].getAddr() << endl;
             continue;
         }
-        string decision_str = "{\"decision\": \"";
-        if (mDecision) {
-            decision_str += "true\"}";
-        }
-        else {
-            decision_str += "false\"}";
-        }
-        HttpClient client_verifier(mApproverList[i].getIPAddr()+":"+mApproverList[i].getOpenPort());
-        cout << "send decision to " << mApproverList[i].getAddr() << " " << endl;
-        client_verifier.request("POST", "/otherdecision", decision_str, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
-            if(!ec) {
+        // skip self and the requestor
+        thread send_other_thread([i, this] {
+
+            string decision_str = "{\"decision\": \"";
+            if (mDecision) {
+                decision_str += "true\"}";
             }
-          });
-        client_verifier.io_service->run();
+            else {
+                decision_str += "false\"}";
+            }
+            HttpClient client_verifier(mApproverList[i].getIPAddr()+":"+mApproverList[i].getOpenPort());
+            cout << "send decision to " << mApproverList[i].getAddr() << " " << endl;
+            client_verifier.request("POST", "/otherdecision", decision_str, [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+                if(!ec) {
+                }
+              });
+            client_verifier.io_service->run();
+        });
+        send_other_thread.detach();
     }
 }
 
