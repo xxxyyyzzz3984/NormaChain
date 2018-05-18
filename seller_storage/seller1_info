@@ -1,0 +1,6 @@
+ADDR=0x111
+IP_ADDR=10.42.0.1
+OPENPORT=5555
+PRODUCTS=pizza,sandwich,tomato,potato,fries,chicken
+PRICES=10,15,21,5,8,30
+
