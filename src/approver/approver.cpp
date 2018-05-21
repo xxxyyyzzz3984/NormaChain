@@ -8,14 +8,14 @@ Approver::Approver() {
     mApproveRequestor = "";
 }
 
-Approver::Approver(string approver_info_filepath, string approver_list_filepath) {
+Approver::Approver(string approver_info_filepath, string approver_list_filepath, string agent_info_filepath) {
     mDecision = false;
     mDecision4Buyer = "";
     mApproveRequestor = "";
-    Load_Files(approver_info_filepath, approver_list_filepath);
+    Load_Files(approver_info_filepath, approver_list_filepath, agent_info_filepath);
 }
 
-void Approver::Load_Files(string approver_info_filepath, string approver_list_filepath) {
+void Approver::Load_Files(string approver_info_filepath, string approver_list_filepath, string agent_info_filepath) {
     ConfigParser approver_parser= ConfigParser();
     approver_parser.OpenFile(approver_info_filepath);
     map<string, string> approver_map = approver_parser.Parse();
@@ -32,7 +32,6 @@ void Approver::Load_Files(string approver_info_filepath, string approver_list_fi
     ConfigParser approverlist_parser= ConfigParser();
     approverlist_parser.OpenFile(approver_list_filepath);
     map<string, string> approverlist_map = approverlist_parser.Parse();
-
     //parse the approver list file
     if (approverlist_map.size() > 0) {
         string prev_prefix = "";
@@ -78,6 +77,20 @@ void Approver::Load_Files(string approver_info_filepath, string approver_list_fi
     else {
         cout << "Parsing Seller Info fails!" << endl;
     }
+
+    // parse agent info file
+    ConfigParser agent_parser= ConfigParser();
+    agent_parser.OpenFile(agent_info_filepath);
+    map<string, string> agent_map = agent_parser.Parse();
+
+    if (agent_map.size() > 0) {
+        mAgent.setAddr( agent_map["ADDR"] );
+        mAgent.setIPAddr( agent_map["IP_ADDR"] );
+        mAgent.setOpenPort(agent_map["OPENPORT"]);
+    }
+    else {
+        cout << "Parsing Approver Info fails!" << endl;
+    }
 }
 
 // wait for the contract
@@ -117,6 +130,9 @@ void Approver::__waitforContract(HttpServer& server) {
         mAllApproverDecisions.clear();
         mDecision4Buyer = "";
         mDecision = false;
+        //send contract to agent
+        __send_contract2agent();
+
     };
 
 
@@ -248,9 +264,19 @@ void Approver::__sendApprovalRequest() {
 
 }
 
-//TODO: save contract into file
-void Approver::__save_contract(string path) {
+//TODO: send contract to agent
+void Approver::__send_contract2agent() {
+    // serialize the contract
+    stringstream archive_stream;
+    boost::archive::text_oarchive archive(archive_stream);
+    archive << mContract;
 
+    // send to the approver
+    HttpClient agent_client(mAgent.getIPAddr() + ":" + mAgent.getOpenPort());
+    agent_client.request("POST", "/contract", archive_stream.str(),
+                         [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
+      });
+     agent_client.io_service->run();
 }
 
 // send decision to other approvers
@@ -259,7 +285,6 @@ void Approver::__sendDecision2Others() {
     for (int i = 0; i<mApproverList.size(); i++) {
         if (mApproverList[i].getAddr().find(mSelfAddr) != std::string::npos ||
                 mApproveRequestor.find(mApproverList[i].getAddr()) != std::string::npos) {
-            cout << mApproveRequestor << "   " << mApproverList[i].getAddr() << endl;
             continue;
         }
         // skip self and the requestor

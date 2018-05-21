@@ -8,12 +8,12 @@ Buyer::Buyer() {
     this->mSelfContract = Contract();
 }
 
-Buyer::Buyer(string Buyer_Info_File, string Sell_List_File) {
+Buyer::Buyer(string Buyer_Info_File, string Sell_List_File, string approver_list_file) {
     this->mSelfContract = Contract();
-    Load_Info_File(Buyer_Info_File, Sell_List_File);
+    Load_Info_File(Buyer_Info_File, Sell_List_File, approver_list_file);
 }
 
-void Buyer::Load_Info_File(string Buyer_Info_File, string Sell_List_File) {
+void Buyer::Load_Info_File(string Buyer_Info_File, string Sell_List_File, string approver_list_file) {
     ConfigParser buyer_parser= ConfigParser();
     buyer_parser.OpenFile(Buyer_Info_File);
     map<string, string> buyer_map = buyer_parser.Parse();
@@ -75,6 +75,55 @@ void Buyer::Load_Info_File(string Buyer_Info_File, string Sell_List_File) {
         cout << "Parsing Seller Info fails!" << endl;
     }
 
+    //parse the approver list file
+    ConfigParser approverlist_parser= ConfigParser();
+    approverlist_parser.OpenFile(approver_list_file);
+    map<string, string> approverlist_map = approverlist_parser.Parse();
+    if (approverlist_map.size() > 0) {
+        string prev_prefix = "";
+        Approver approver_info;
+        bool initialized = false;
+        for(map<string,string>::iterator it = approverlist_map.begin(); it != approverlist_map.end(); ++it) {
+            string approver_prefix;
+            size_t pos = 0;
+            string delimiter = "_";
+            string key = it->first;
+            string key_cp = key;
+            while ((pos = key.find(delimiter)) != std::string::npos) {
+                approver_prefix = key.substr(0, pos);
+                key.erase(0, pos + delimiter.length());
+            }
+
+            if (prev_prefix != approver_prefix) {
+                prev_prefix = approver_prefix;
+
+                if (initialized) {
+                    this->mApproverList.push_back(approver_info);
+                }
+
+                approver_info = Approver();
+                if (key_cp.find("_ADDR") != std::string::npos) {
+                    approver_info.setAddr(approverlist_map[key_cp]);
+                }
+                initialized = true;
+            }
+            else {
+                if (key_cp.find("_IPADDR") != std::string::npos) {
+                    approver_info.setIPAddr(approverlist_map[key_cp]);
+                }
+
+                if (key_cp.find("_OPENPORT") != std::string::npos) {
+                    approver_info.setOpenPort(approverlist_map[key_cp]);
+                }
+            }
+        }
+
+        this->mApproverList.push_back(approver_info);
+    }
+    else {
+        cout << "Approver List Info fails!" << endl;
+    }
+
 }
 
 // send purchase request to seller
@@ -112,7 +161,7 @@ void Buyer::__gen_contract(int seller_index, string product, double_t price,stri
 }
 
 // Transaction function
-void Buyer::Transact(int seller_index, string product, string description) {
+void Buyer::Transact(int seller_index, string product, string description, int approver_index) {
     double price = this->__request_purchase(seller_index, product, description);
     this->__gen_contract(seller_index, product, price, description, mTimestamp);
 
@@ -123,7 +172,7 @@ void Buyer::Transact(int seller_index, string product, string description) {
 
     // send to the approver
     // TODO: parse approver info
-    HttpClient approver_client("10.42.0.1:6666");
+    HttpClient approver_client(mApproverList[approver_index].getIPAddr() + ":" + mApproverList[approver_index].getOpenPort());
     approver_client.request("POST", "/contract", archive_stream.str(), [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
         if(!ec) {
             ptree pt;

@@ -17,6 +17,7 @@
 #include "httpimpl/client_http.hpp"
 #include "configparser/configparser.h"
 #include "contract/contract.h"
+#include "agent/agent.h"
 
 using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 using HttpClient = SimpleWeb::Client<SimpleWeb::HTTP>;
@@ -28,8 +29,8 @@ class Approver
 {
 public:
     Approver();
-    Approver(string approver_info_filepath, string approver_list_filepath);
-    void Load_Files(string approver_info_filepath, string approver_list_filepath);
+    Approver(string approver_info_filepath, string approver_list_filepath, string agent_info_filepath);
+    void Load_Files(string approver_info_filepath, string approver_list_filepath, string agent_info_filepath);
     void setAddr(string Addr);
     void setIPAddr(string IPAddr);
     void setOpenPort(string openport);
@@ -46,7 +47,7 @@ private:
     void __waitforContract(HttpServer& serve);
     void __waitforApprovalRequest(HttpServer& server);
     void __waitforOtherDecisions(HttpServer& server);
-    void __save_contract(string path);
+    void __send_contract2agent();
     void __sendApprovalRequest();
     void __sendDecision2Others();
     Contract mContract;
@@ -54,7 +55,7 @@ private:
     string mDecision4Buyer;
     string mApproveRequestor;
     vector<bool>mAllApproverDecisions;
-
+    Agent mAgent;
 };
 
 #endif

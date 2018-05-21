@@ -16,6 +16,7 @@
 #include "contract/contract.h"
 #include "seller/seller.h"
 #include "httpimpl/client_http.hpp"
+#include "approver/approver.h"
 
 using namespace std;
 using namespace boost::property_tree;
@@ -26,9 +27,9 @@ class Buyer
 {
 public:
     Buyer();
-    Buyer(string Buyer_Info_File, string Sell_List_File);
-    void Load_Info_File(string Buyer_Info_File, string Sell_List_File);
-    void Transact(int seller_index, string product, string description);
+    Buyer(string Buyer_Info_File, string Sell_List_File, string approver_list_file);
+    void Load_Info_File(string Buyer_Info_File, string Sell_List_File, string approver_list_file);
+    void Transact(int seller_index, string product, string description, int approver_index);
 
 private:
     string mSelfAddr;
@@ -39,6 +40,7 @@ private:
     static double price;
     double __request_purchase(int seller_index, string product, string description);
     void __gen_contract(int seller_index, string product, double_t price,string description, time_t timestamp);
+    vector<Approver> mApproverList;
 };
 
 #endif

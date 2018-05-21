@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(NormaChain)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "../../")
@@ -30,5 +32,9 @@ endif(Boost_FOUND)
 ############# finding THREAD Libraries ######
 find_package(Threads REQUIRED)
 ##############
+
+############# findning PBC libraries #######
+find_package(PBC REQUIRED )
+###########################################
 
 add_subdirectory (src)
