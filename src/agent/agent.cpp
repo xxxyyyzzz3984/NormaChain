@@ -77,6 +77,11 @@ void Agent::__encrypt_contract(Contract contract) {
     }
 
     this->mContract2TrapdoorMap.insert(pair<uint64_t, vector<element_s>>(contract.getTransactionID(), trapdoor_list));
+    vector<>
+}
+
+void Agent::__save_trapdoorlist2file() {
+
 }
 
 void Agent::__recv_contract(HttpServer &server) {
@@ -166,6 +171,11 @@ void Agent::serve() {
         server.start();
     });
     server_thread.join();
+}
+
+void Agent::test() {
+    Contract contract = Contract(10, "123", "123", 100, 123, "this is a description", "bread");
+    __encrypt_contract(contract);
 }
 
 void Agent::setAddr(string Addr) {

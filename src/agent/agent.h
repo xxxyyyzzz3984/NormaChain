@@ -35,6 +35,7 @@ public:
     string getAddr();
     string getOpenPort();
     void Load_Agent_Info(string path);
+    void test();
     void serve();
 
 private:
@@ -50,6 +51,7 @@ private:
     vector<Contract> mRecvContractList;
     void __recv_contract(HttpServer& server);
     void __recv_searchrequest(HttpServer& server);
+    void __save_trapdoorlist2file();
     vector<uint64_t> __search_keyword(string keyword);
 };
 
