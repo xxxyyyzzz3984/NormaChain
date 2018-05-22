@@ -1,9 +1,11 @@
 #ifndef AGENT_H
 #define AGENT_H
 
+#include <fstream>
 #include <string>
 #include <gmp.h>
 #include <pbc/pbc.h>
+#include <dirent.h>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/serialization/vector.hpp>
@@ -27,7 +29,7 @@ class Agent
 {
 public:
     Agent();
-    Agent(string agent_info_path);
+    Agent(string agent_info_path, string contract_root_dir);
     void setIPAddr(string IPAddr);
     void setAddr(string Addr);
     void setOpenPort(string OpenPort);
@@ -35,6 +37,7 @@ public:
     string getAddr();
     string getOpenPort();
     void Load_Agent_Info(string path);
+    void Set_Contract_Root(string contract_root_dir);
     void test();
     void serve();
 
@@ -46,12 +49,15 @@ private:
     string mIPAddr;
     string mAddr;
     string mOpenPort;
+    string mContractRootDir;
+    int mNumContract;
 
     void __encrypt_contract(Contract contract);
     vector<Contract> mRecvContractList;
     void __recv_contract(HttpServer& server);
     void __recv_searchrequest(HttpServer& server);
-    void __save_trapdoorlist2file();
+    void __save_encryptedcontract(vector<string> trapdoor_list);
+    void __load_encryptedcontract();
     vector<uint64_t> __search_keyword(string keyword);
 };
 
