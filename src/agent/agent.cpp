@@ -2,20 +2,89 @@
 using namespace std;
 
 Agent::Agent() {
-    init_pbc_param_pairing(mParam, mPairing);
-    double P = mpz_get_d(mPairing->r);
-    KeyGen(&mKey, mParam, mPairing);
     mNumContract = 0;
 }
 
-Agent::Agent(string agent_info_path, string contract_root_dir) {
+Agent::Agent(string agent_info_path, string contract_root_dir, string key_file_path) {
+    //check if keys already exist
     init_pbc_param_pairing(mParam, mPairing);
     double P = mpz_get_d(mPairing->r);
-    KeyGen(&mKey, mParam, mPairing);
+    struct stat buffer;
+    if (stat (key_file_path.c_str(), &buffer) == 0) {
+        cout << "Loading keys " << endl;
+        __load_key(key_file_path);
+    }
+    else {
+        __save_key(key_file_path);
+    }
     mNumContract = 0;
     this->Load_Agent_Info(agent_info_path);
     Set_Contract_Root(contract_root_dir);
     __load_encryptedcontract();
+}
+
+void Agent::__save_key(string key_file_path) {
+
+    KeyGen(&mKey, mParam, mPairing);
+
+    vector<string> key_str;
+    //save private key
+    int priv_len = element_length_in_bytes(mKey.priv);
+    unsigned char private_c[priv_len];
+    element_to_bytes(private_c, mKey.priv);
+    string priv_str((char*)private_c);
+    key_str.push_back(priv_str);
+
+    //save g
+    int g_len = element_length_in_bytes(mKey.pub.g);
+    unsigned char g_c[g_len];
+    element_to_bytes(g_c, mKey.pub.g);
+    string g_str((char*)g_c);
+    key_str.push_back(g_str);
+
+    //save h
+    int h_len = element_length_in_bytes(mKey.pub.h);
+    unsigned char h_c[h_len];
+    element_to_bytes(h_c, mKey.pub.h);
+    string h_str((char*)h_c);
+    key_str.push_back(h_str);
+
+    //save key to key file
+    stringstream archive_stream;
+    boost::archive::text_oarchive archive(archive_stream);
+    archive << key_str;
+    ofstream key_out_file(key_file_path);
+    key_out_file << archive_stream.str();
+    key_out_file.close();
+}
+
+void Agent::__load_key(string key_file_path) {
+    vector<string> key_str;
+
+    std::ifstream ifs(key_file_path);
+    std::string key_content( (std::istreambuf_iterator<char>(ifs) ),
+                           (std::istreambuf_iterator<char>()) );
+    ifs.close();
+
+    stringstream iarchive_stream;
+    iarchive_stream << key_content;
+    boost::archive::text_iarchive iarchive(iarchive_stream);
+    iarchive >> key_str;
+    element_t key_priv;
+    element_init_G1(key_priv, mPairing);
+    element_from_bytes(key_priv, (unsigned char*) key_str[0].c_str());
+
+    element_t g;
+    element_init_G1(g, mPairing);
+    element_from_bytes(g, (unsigned char*) key_str[1].c_str());
+
+    element_t h;
+    element_init_G1(h, mPairing);
+    element_from_bytes(h, (unsigned char*) key_str[2].c_str());
+
+    element_init_same_as(mKey.priv, key_priv);
+    element_init_same_as(mKey.pub.g, g);
+    element_init_same_as(mKey.pub.h, h);
 }
 
 void Agent::Load_Agent_Info(string path) {
@@ -46,7 +115,7 @@ void Agent::__encrypt_contract(Contract contract) {
 
     vector<element_s> trapdoor_list;
     description_words.clear();
-    vector<string> contract_trapdoor_list;
+    vector<vector<unsigned char>> contract_trapdoor_list;
     contract_trapdoor_list.clear();
 
     // parse desription based on
@@ -77,8 +146,8 @@ void Agent::__encrypt_contract(Contract contract) {
         int len = element_length_in_bytes(Tw);
         unsigned char data_tmp[len];
         element_to_bytes(data_tmp, Tw);
-        string data_tmp_str((char*)data_tmp);
-        contract_trapdoor_list.push_back(data_tmp_str);
+        vector<unsigned char> data_vec_tmp(data_tmp, data_tmp + len);
+        contract_trapdoor_list.push_back(data_vec_tmp);
     }
 
 
@@ -100,8 +169,8 @@ void Agent::__encrypt_contract(Contract contract) {
         int len = element_length_in_bytes(Tw);
         unsigned char data_tmp[len];
         element_to_bytes(data_tmp, Tw);
-        string data_tmp_str((char*)data_tmp);
-        contract_trapdoor_list.push_back(data_tmp_str);
+        vector<unsigned char> data_vec_tmp(data_tmp, data_tmp + len);
+        contract_trapdoor_list.push_back(data_vec_tmp);
     }
 
     // encrypt seller addr
@@ -122,8 +191,8 @@ void Agent::__encrypt_contract(Contract contract) {
         int len = element_length_in_bytes(Tw);
         unsigned char data_tmp[len];
         element_to_bytes(data_tmp, Tw);
-        string data_tmp_str((char*)data_tmp);
-        contract_trapdoor_list.push_back(data_tmp_str);
+        vector<unsigned char> data_vec_tmp(data_tmp, data_tmp + len);
+        contract_trapdoor_list.push_back(data_vec_tmp);
     }
 
 
@@ -146,8 +215,8 @@ void Agent::__encrypt_contract(Contract contract) {
         int len = element_length_in_bytes(Tw);
         unsigned char data_tmp[len];
         element_to_bytes(data_tmp, Tw);
-        string data_tmp_str((char*)data_tmp);
-        contract_trapdoor_list.push_back(data_tmp_str);
+        vector<unsigned char> data_vec_tmp(data_tmp, data_tmp + len);
+        contract_trapdoor_list.push_back(data_vec_tmp);
     }
 
     // encrypt price
@@ -168,8 +237,8 @@ void Agent::__encrypt_contract(Contract contract) {
         int len = element_length_in_bytes(Tw);
         unsigned char data_tmp[len];
         element_to_bytes(data_tmp, Tw);
-        string data_tmp_str((char*)data_tmp);
-        contract_trapdoor_list.push_back(data_tmp_str);
+        vector<unsigned char> data_vec_tmp(data_tmp, data_tmp + len);
+        contract_trapdoor_list.push_back(data_vec_tmp);
     }
 
     // encrypt description
@@ -188,11 +257,11 @@ void Agent::__encrypt_contract(Contract contract) {
             element_s tmp = {Tw->field, Tw->data};
             trapdoor_list.push_back(tmp);
 
-        int len = element_length_in_bytes(Tw);
+            int len = element_length_in_bytes(Tw);
             unsigned char data_tmp[len];
             element_to_bytes(data_tmp, Tw);
-            string data_tmp_str((char*)data_tmp);
-            contract_trapdoor_list.push_back(data_tmp_str);
+            vector<unsigned char> data_vec_tmp(data_tmp, data_tmp + len);
+            contract_trapdoor_list.push_back(data_vec_tmp);
         }
     }
 
@@ -200,7 +269,7 @@ void Agent::__encrypt_contract(Contract contract) {
     __save_encryptedcontract(contract_trapdoor_list);
 }
 
-void Agent::__save_encryptedcontract(vector<string> trapdoor_list) {
+void Agent::__save_encryptedcontract(vector<vector<unsigned char>> trapdoor_list) {
 	stringstream archive_stream;
 	boost::archive::text_oarchive archive(archive_stream);
 	archive << trapdoor_list;
@@ -227,19 +296,21 @@ void Agent::__load_encryptedcontract() {
             stringstream iarchive_stream;
             iarchive_stream << contract_content;
             boost::archive::text_iarchive iarchive(iarchive_stream);
-            vector<string> encrypted_contract;
+            vector<vector<unsigned char>> encrypted_contract;
             iarchive >> encrypted_contract;
 
             vector<element_s> tmp_vec;
             for(int i=0; i<encrypted_contract.size(); i++) {
-
                 element_t tmp_et;
                 element_init_G1(tmp_et, mPairing);
-                element_from_bytes(tmp_et, (unsigned char*) encrypted_contract[i].c_str());
-                tmp_vec.push_back({tmp_et->field, tmp_et->data});
+                int len = element_length_in_bytes(tmp_et);
+                element_from_bytes(tmp_et, encrypted_contract[i].data());
+                element_s tmp_es = {tmp_et->field, tmp_et->data};
+                tmp_vec.push_back(tmp_es);
             }
 
             this->mContract2TrapdoorMap.insert(pair<uint64_t, vector<element_s>>((uint64_t)mNumContract, tmp_vec));
+
             mNumContract++;
         }
         closedir (dir);
@@ -281,6 +352,7 @@ vector<uint64_t> Agent::__search_keyword(string keyword) {
     vector<uint64_t> Transaction_IDs;
     BOOST_FOREACH(it, mContract2TrapdoorMap) {
         uint64_t Transaction_ID;
+        Transaction_ID = it.first;
         cout << Transaction_ID << endl;
         vector<element_s> trapdoor_list = mContract2TrapdoorMap[Transaction_ID];
         for(int i=0; i<trapdoor_list.size(); i++) {
@@ -384,19 +456,4 @@ string Agent::getOpenPort() {
 void Agent::Set_Contract_Root(string contract_root_dir) {
     mContractRootDir = contract_root_dir;
 }
-
-//void Agent::__write_encrypted_contract(string path) {
-//    cout << "test write " << endl;
-
-//    // serialize the vector element_s struct (encrypted contract)
-//    stringstream archive_stream;
-//    boost::archive::text_oarchive archive(archive_stream);
-//    archive << mContract2TrapdoorMap[0];
-
-////    ofstream output_file(path, ios::binary);
-////    output_file << archive_stream.str();
-//    cout << archive_stream.str() << endl;
-////    output_file.close();
-//}
-
 

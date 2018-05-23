@@ -171,7 +171,6 @@ void Buyer::Transact(int seller_index, string product, string description, int a
     archive << mSelfContract;
 
     // send to the approver
-    // TODO: parse approver info
     HttpClient approver_client(mApproverList[approver_index].getIPAddr() + ":" + mApproverList[approver_index].getOpenPort());
     approver_client.request("POST", "/contract", archive_stream.str(), [](shared_ptr<HttpClient::Response> response, const SimpleWeb::error_code &ec) {
         if(!ec) {
@@ -183,7 +182,3 @@ void Buyer::Transact(int seller_index, string product, string description, int a
       });
       approver_client.io_service->run();
 }
-
-
-
-

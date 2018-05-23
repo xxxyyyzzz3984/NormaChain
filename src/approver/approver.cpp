@@ -89,7 +89,7 @@ void Approver::Load_Files(string approver_info_filepath, string approver_list_fi
         mAgent.setOpenPort(agent_map["OPENPORT"]);
     }
     else {
-        cout << "Parsing Approver Info fails!" << endl;
+        cout << "Parsing Agent Info fails!" << endl;
     }
 }
 

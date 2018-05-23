@@ -29,7 +29,7 @@ class Agent
 {
 public:
     Agent();
-    Agent(string agent_info_path, string contract_root_dir);
+    Agent(string agent_info_path, string contract_root_dir, string key_file_path);
     void setIPAddr(string IPAddr);
     void setAddr(string Addr);
     void setOpenPort(string OpenPort);
@@ -56,8 +56,10 @@ private:
     vector<Contract> mRecvContractList;
     void __recv_contract(HttpServer& server);
     void __recv_searchrequest(HttpServer& server);
-    void __save_encryptedcontract(vector<string> trapdoor_list);
+    void __save_encryptedcontract(vector<vector<unsigned char>> trapdoor_list);
     void __load_encryptedcontract();
+    void __save_key(string key_file_path);
+    void __load_key(string key_file_path);
     vector<uint64_t> __search_keyword(string keyword);
 };
 

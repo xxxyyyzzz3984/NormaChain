@@ -29,10 +29,6 @@ else()
 endif(Boost_FOUND)
 ##############
 
-############# finding THREAD Libraries ######
-find_package(Threads REQUIRED)
-##############
-
 ############# findning PBC libraries #######
 find_package(PBC REQUIRED )
 ###########################################
