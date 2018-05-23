@@ -29,7 +29,7 @@ class Agent
 {
 public:
     Agent();
-    Agent(string agent_info_path, string contract_root_dir, string key_file_path);
+    Agent(string agent_info_path, string contract_root_dir);
     void setIPAddr(string IPAddr);
     void setAddr(string Addr);
     void setOpenPort(string OpenPort);
@@ -60,6 +60,9 @@ private:
     void __load_encryptedcontract();
     void __save_key(string key_file_path);
     void __load_key(string key_file_path);
+    void __save_contract(Contract contract);
+    void __load_contract();
+    vector<Contract> mContractList;
     vector<uint64_t> __search_keyword(string keyword);
 };
 

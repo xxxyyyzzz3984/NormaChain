@@ -5,22 +5,15 @@ Agent::Agent() {
     mNumContract = 0;
 }
 
-Agent::Agent(string agent_info_path, string contract_root_dir, string key_file_path) {
+Agent::Agent(string agent_info_path, string contract_root_dir) {
     //check if keys already exist
     init_pbc_param_pairing(mParam, mPairing);
     double P = mpz_get_d(mPairing->r);
-    struct stat buffer;
-    if (stat (key_file_path.c_str(), &buffer) == 0) {
-        cout << "Loading keys " << endl;
-        __load_key(key_file_path);
-    }
-    else {
-        __save_key(key_file_path);
-    }
+    KeyGen(&mKey, mParam, mPairing);
     mNumContract = 0;
     this->Load_Agent_Info(agent_info_path);
     Set_Contract_Root(contract_root_dir);
-    __load_encryptedcontract();
+    __load_contract();
 }
 
 void Agent::__save_key(string key_file_path) {
@@ -70,6 +63,7 @@ void Agent::__load_key(string key_file_path) {
     iarchive_stream << key_content;
     boost::archive::text_iarchive iarchive(iarchive_stream);
     iarchive >> key_str;
+
     element_t key_priv;
     element_init_G1(key_priv, mPairing);
     element_from_bytes(key_priv, (unsigned char*) key_str[0].c_str());
@@ -103,8 +97,7 @@ void Agent::Load_Agent_Info(string path) {
 }
 
 void Agent::__encrypt_contract(Contract contract) {
-    contract.setTransactionID((uint64_t)mNumContract);
-    mNumContract++;
+    contract.setTransactionID((uint64_t)mContractList.size());
     uint64_t Transaction_ID = contract.getTransactionID();
     string buyer_addr = contract.getBuyerAddr();
     string seller_addr = contract.getSellerAddr();
@@ -266,14 +259,14 @@ void Agent::__encrypt_contract(Contract contract) {
     }
 
     this->mContract2TrapdoorMap.insert(pair<uint64_t, vector<element_s>>(contract.getTransactionID(), trapdoor_list));
-    __save_encryptedcontract(contract_trapdoor_list);
+//    __save_encryptedcontract(contract_trapdoor_list);
 }
 
 void Agent::__save_encryptedcontract(vector<vector<unsigned char>> trapdoor_list) {
 	stringstream archive_stream;
 	boost::archive::text_oarchive archive(archive_stream);
 	archive << trapdoor_list;
-    ofstream contract_out_file(mContractRootDir + "/contract" + to_string(mNumContract) + ".peksct");
+    ofstream contract_out_file(mContractRootDir + "/contract" + to_string(mContractList.size()) + ".peksct");
 	contract_out_file << archive_stream.str();
 	contract_out_file.close();
 }
@@ -309,9 +302,8 @@ void Agent::__load_encryptedcontract() {
                 tmp_vec.push_back(tmp_es);
             }
 
-            this->mContract2TrapdoorMap.insert(pair<uint64_t, vector<element_s>>((uint64_t)mNumContract, tmp_vec));
+            this->mContract2TrapdoorMap.insert(pair<uint64_t, vector<element_s>>((uint64_t)mContractList.size(), tmp_vec));
 
-            mNumContract++;
         }
         closedir (dir);
     }
@@ -319,6 +311,36 @@ void Agent::__load_encryptedcontract() {
         perror ("Fail to open contract directory");
     }
 }
+
+void Agent::__save_contract(Contract contract) {
+    string file_content = contract.genContractFileStr();
+    std::ofstream out(mContractRootDir + "/contract" + to_string(mContractList.size()) + ".ct");
+    out << file_content;
+    out.close();
+}
+
+void Agent::__load_contract() {
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir (mContractRootDir.c_str())) != NULL) {
+        while ((ent = readdir (dir)) != NULL) {
+            string contract_file_name(ent->d_name);
+            if (contract_file_name == "." || contract_file_name == "..") {
+                continue;
+            }
+            string full_path = mContractRootDir + "/" + contract_file_name;
+            Contract contract = Contract(full_path);
+            mContractList.push_back(contract);
+            cout << contract.getDescription() << endl;
+            __encrypt_contract(contract);
+        }
+        closedir (dir);
+    }
+    else {
+        perror ("Fail to open contract directory");
+    }
+}
+
 
 void Agent::__recv_contract(HttpServer &server) {
     server.resource["^/contract$"]["POST"] = [this](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
@@ -336,9 +358,11 @@ void Agent::__recv_contract(HttpServer &server) {
                       << "Content-Length: " << response_str.length() << "\r\n\r\n"
                       << response_str;
 
-            uint64_t Transaction_ID = (uint64_t)mNumContract;
+            uint64_t Transaction_ID = (uint64_t)mContractList.size();
             recv_contract.setTransactionID(Transaction_ID);
             __encrypt_contract(recv_contract);
+            mContractList.push_back(recv_contract);
+            __save_contract(recv_contract);
         }
         catch(const exception &e) {
           *response << "HTTP/1.1 400 Bad Request\r\nContent-Length: " << strlen(e.what()) << "\r\n\r\n"
@@ -353,7 +377,6 @@ vector<uint64_t> Agent::__search_keyword(string keyword) {
     BOOST_FOREACH(it, mContract2TrapdoorMap) {
         uint64_t Transaction_ID;
         Transaction_ID = it.first;
-        cout << Transaction_ID << endl;
         vector<element_s> trapdoor_list = mContract2TrapdoorMap[Transaction_ID];
         for(int i=0; i<trapdoor_list.size(); i++) {
             element_t Tw = {trapdoor_list[i].field, trapdoor_list[i].data};
@@ -415,6 +438,9 @@ void Agent::test() {
     Contract contract1 = Contract(0, "0x123", "0x152", 100, std::time(nullptr), "Bought a bread", "bread");
     Contract contract2 = Contract(1, "0x111", "0x287", 100, std::time(nullptr), "Bought some drugs", "drug");
     Contract contract3 = Contract(2, "0x111", "0x287", 100, std::time(nullptr), "Bought a strawberry", "strawberry");
+    __save_contract(contract1);
+    __save_contract(contract2);
+    __save_contract(contract3);
     __encrypt_contract(contract1);
     __encrypt_contract(contract2);
     __encrypt_contract(contract3);
