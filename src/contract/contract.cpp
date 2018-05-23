@@ -59,7 +59,7 @@ string Contract::getSellerAddr() {
     return this->mSellerAddr;
 }
 
-double_t Contract::getPrice() {
+double Contract::getPrice() {
     return this->mPrice;
 }
 

@@ -25,7 +25,7 @@ public:
     string getBuyerAddr();
     string getSellerAddr();
     string getProductInfo();
-    double_t getPrice();
+    double getPrice();
     time_t getTimeStamp();
     string getDescription();
     uint64_t getTransactionID();
@@ -49,7 +49,7 @@ private:
     string mBuyerAddr;
     string mSellerAddr;
     string mProduct;
-    double_t mPrice;
+    double mPrice;
     time_t mTransactionTimeStamp;
     string mDescription;
 

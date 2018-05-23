@@ -152,7 +152,7 @@ double Buyer::__request_purchase(int seller_index, string product, string descri
 }
 
 // generate contract
-void Buyer::__gen_contract(int seller_index, string product, double_t price,string description, time_t timestamp) {
+void Buyer::__gen_contract(int seller_index, string product, double price,string description, time_t timestamp) {
 
     // give a temporary transaction id, approver will update later
     mSelfContract = Contract(0, mSelfAddr, mSellerList[seller_index].getAddr(),

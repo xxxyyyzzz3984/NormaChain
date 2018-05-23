@@ -39,7 +39,7 @@ private:
     time_t mTimestamp;
     static double price;
     double __request_purchase(int seller_index, string product, string description);
-    void __gen_contract(int seller_index, string product, double_t price,string description, time_t timestamp);
+    void __gen_contract(int seller_index, string product, double price,string description, time_t timestamp);
     vector<Approver> mApproverList;
 };
 
