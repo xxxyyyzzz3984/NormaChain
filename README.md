@@ -1,12 +1,12 @@
-<h1 align="center">
-	<img width="50%" src="https://github.com/yinhaoxiao/Smart-Home-Blockchain-Platform/blob/master/image.jpg" alt="logo">
-</h1>
 
-# Smart Home BlockChain Platform
+
+# NormaChain
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/yinhaoxiao/Smart-Home-Blockchain-Platform/blob/master/LICENSE)
 
 This is the implementation of NormaChain prototype. The structure of NormaChain is shown as follow:
-![alt text](https://raw.githubusercontent.com/yinhaoxiao/NormaChain/master/images/model.pdf)
+<h1 align="center">
+	<img width="50%" src="https://github.com/yinhaoxiao/Smart-Home-Blockchain-Platform/blob/master/image.jpg" alt="logo">
+</h1>
 
 ## Installation/Getting Started
 
