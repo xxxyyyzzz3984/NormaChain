@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    Supervisor supervisor = Supervisor("/home/xyh3984/CC++Projects/NormaChain/supervisor_storage/agent_info");
+    Supervisor supervisor = Supervisor("../supervisor_storage/agent_info");
     supervisor.SearchKeyword(argv[1]);
     return 0;
 }
