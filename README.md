@@ -5,7 +5,7 @@
 
 This is the implementation of NormaChain prototype. The structure of NormaChain is shown as follow:
 <h1 align="center">
-	<img width="50%" src="https://github.com/yinhaoxiao/Smart-Home-Blockchain-Platform/blob/master/image.jpg" alt="logo">
+	<img width="50%" src="https://github.com/yinhaoxiao/NormaChain/blob/master/images/image.jpg" alt="logo">
 </h1>
 
 ## Installation/Getting Started
