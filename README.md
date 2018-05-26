@@ -1,6 +1,7 @@
 
 
 # NormaChain
+[![Build Status](https://travis-ci.org/yinhaoxiao/NormaChain.svg?branch=master)](https://travis-ci.org/yinhaoxiao/NormaChain)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/yinhaoxiao/Smart-Home-Blockchain-Platform/blob/master/LICENSE)
 
 This is the implementation of NormaChain prototype. The structure of NormaChain is shown as follow:
