@@ -59,30 +59,30 @@ make -j 4
 
 To run `buyer`
 ```
-cd build
-./test_buyer
+$ cd build
+$ ./test_buyer
 ```
 
 To run `seller`
 ```
-cd build
-./test_seller
+$ cd build
+$ ./test_seller
 ```
 
 To run `approver`
 ```
-cd build
-./test_approver path/to/approver/info
+$ cd build
+$ ./test_approver path/to/approver/info
 ```
 
 To run `agent`
 ```
-cd build
-./test_agent
+$ cd build
+$ ./test_agent
 ```
 
 To run `supervisor`
 ```
-cd build
-./test_supervisor keyword
+$ cd build
+$ ./test_supervisor keyword
 ```

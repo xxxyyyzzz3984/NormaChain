@@ -401,13 +401,14 @@ void Agent::__recv_searchrequest(HttpServer &server) {
             string keyword;
             keyword = pt.get<string>("keyword");
             cout << "Recieve a search request with keyword " << keyword << endl;
-
+            const clock_t begin_time = clock();
             //serialize the transaction id vector and send to supervisor
             vector<uint64_t> found_trans_id_list = __search_keyword(keyword);
             stringstream archive_stream;
             boost::archive::text_oarchive archive(archive_stream);
             archive << found_trans_id_list;
             cout << "Found " << found_trans_id_list.size() << " records for keyword " << keyword <<"." << endl;
+            std::cout << "The search time is " << float( clock () - begin_time ) /  CLOCKS_PER_SEC << std::endl;
 
             *response << "HTTP/1.1 200 OK\r\n"
                       << "Content-Length: " << archive_stream.str().length() << "\r\n\r\n"
